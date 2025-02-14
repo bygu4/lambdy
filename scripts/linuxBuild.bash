@@ -1,5 +1,3 @@
-windows_targeted=${PWD}/.config/windowsTargeted.txt
-
 for f in $(find . -name "*.sln"); do (
     dotnet build $f --nologo -clp:NoSummary  -v:m
     if [ $? -eq 0 ]; then
