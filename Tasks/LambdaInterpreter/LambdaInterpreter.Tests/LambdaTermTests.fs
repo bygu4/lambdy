@@ -51,7 +51,7 @@ let terms =
         Omega "z";
         Application (Omega "x", Omega "y");
 
-        // Alpha reduction required
+        // Alpha conversion required
         Application
             (Abstraction ("x", Abstraction ("y", Application (Variable "x", Variable "y"))),
             Variable "y");

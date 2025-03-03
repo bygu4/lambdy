@@ -1,12 +1,15 @@
 ﻿module LambdaTerm
 
+/// Use strings as variables in lambda terms.
 type Variable = string
 
+/// The definition of lambda term.
 type LambdaTerm =
     | Variable of Variable
     | Abstraction of Variable * LambdaTerm
     | Application of LambdaTerm * LambdaTerm
 
+/// Gets free variables of the given lambda `term`.
 let rec freeVars term =
     match term with
     | Variable v -> set [v]
@@ -14,10 +17,13 @@ let rec freeVars term =
     | Application (left, right) -> 
         Set.union (freeVars left) (freeVars right)
 
-let rec nextFreeVar var freeVars =
-    if not (Set.contains var freeVars) then var
-    else nextFreeVar (var + "'") freeVars
+/// Gets a variable, starting with `prefix`, that is not in `freeVars`.
+let rec nextFreeVar prefix freeVars =
+    if not (Set.contains prefix freeVars) then prefix
+    else nextFreeVar (prefix + "'") freeVars
 
+/// Substitutes free occurrences of variable `var` in `term` with given term `sub`.
+/// Performs alpha-conversion if necessary.
 let rec substitute term var sub =
     match term with
     | Variable x when x = var -> sub
@@ -34,6 +40,8 @@ let rec substitute term var sub =
     | Application (left, right) ->
         Application (substitute left var sub, substitute right var sub)
 
+/// Performs beta-reduction of the given lambda `term`.
+/// Performs alpha-conversion if necessary.
 let rec reduce term =
     match term with
     | Variable _ as var -> var
