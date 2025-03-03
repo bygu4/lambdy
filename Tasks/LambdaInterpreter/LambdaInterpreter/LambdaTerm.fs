@@ -11,8 +11,8 @@ let rec freeVars term =
     match term with
     | Variable v -> set [v]
     | Abstraction (v, term) -> Set.remove v (freeVars term)
-    | Application (left, right)
-        -> Set.union (freeVars left) (freeVars right)
+    | Application (left, right) -> 
+        Set.union (freeVars left) (freeVars right)
 
 let rec nextFreeVar var freeVars =
     if not (Set.contains var freeVars) then var
@@ -38,7 +38,13 @@ let rec reduce term =
     match term with
     | Variable _ as var -> var
     | Abstraction (x, term) -> Abstraction (x, reduce term)
-    | Application (Abstraction (var, term), sub) ->
-        reduce (substitute term var sub)
-    | Application (left, right)
-        -> Application (reduce left, reduce right)
+    | Application (Abstraction (var, term) as abs, sub) as source ->
+        let reduced = substitute term var sub
+        if reduced <> source then reduce reduced
+        else Application (reduce abs, reduce sub)
+    | Application (left, right) ->
+        let left = reduce left
+        let right = reduce right
+        match left with
+        | Abstraction _ -> reduce (Application (left, right))
+        | _ -> Application (left, right)

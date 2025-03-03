@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "LambdaInterpreter", "LambdaInterpreter\LambdaInterpreter.fsproj", "{FEDEB148-3C5A-48B7-A389-8452FF0A154E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "LambdaInterpreter.Tests", "LambdaInterpreter.Tests\LambdaInterpreter.Tests.fsproj", "{ACF50CBA-8697-455E-A5B4-67DAF0DC037C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FEDEB148-3C5A-48B7-A389-8452FF0A154E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEDEB148-3C5A-48B7-A389-8452FF0A154E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEDEB148-3C5A-48B7-A389-8452FF0A154E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEDEB148-3C5A-48B7-A389-8452FF0A154E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACF50CBA-8697-455E-A5B4-67DAF0DC037C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACF50CBA-8697-455E-A5B4-67DAF0DC037C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACF50CBA-8697-455E-A5B4-67DAF0DC037C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACF50CBA-8697-455E-A5B4-67DAF0DC037C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
