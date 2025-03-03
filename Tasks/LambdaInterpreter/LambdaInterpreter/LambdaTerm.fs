@@ -39,8 +39,8 @@ let rec reduce term =
     | Variable _ as var -> var
     | Abstraction (x, term) -> Abstraction (x, reduce term)
     | Application (Abstraction (var, term) as abs, sub) as source ->
-        let reduced = substitute term var sub
-        if reduced <> source then reduce reduced
+        let term = substitute term var sub
+        if term <> source then reduce term
         else Application (reduce abs, reduce sub)
     | Application (left, right) ->
         let left = reduce left
