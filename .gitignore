@@ -398,3 +398,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# TeX output files
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
