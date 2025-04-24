@@ -1,7 +1,9 @@
-﻿module LambdaTerm.Tests
+﻿module LambdaInterpreter.Tests
 
 open NUnit.Framework
 open FsUnit
+
+open LambdaTerm
 
 let id var = Abstraction (var, Variable var)
 let omega var = Abstraction (var, Application (Variable var, Variable var))
