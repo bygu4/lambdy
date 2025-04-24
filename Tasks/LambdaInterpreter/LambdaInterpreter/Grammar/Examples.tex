@@ -33,32 +33,43 @@ $\rightarrow$ <variable> <whitespace> <variable> <whitespace> <variable> <variab
 $\rightarrow$ <variable> <whitespace> <variable> <whitespace> <variable> \\
 $\rightarrow$ "x y z" \\
 
-<expression> \\
-$\rightarrow$ <expression\_opt> <line\_end> \\
-$\rightarrow$ <definition> <line\_end> \\
-$\rightarrow$ <declaration> <whitespace> "=" <whitespace> <term> <line\_end> \\
-$\rightarrow$ "let" <whitespace> <variable> <whitespace> "=" <whitespace> <term> <line\_end> \\
-$\rightarrow$ "let S = " <term> "$\backslash$n" \\
-$\rightarrow$ "let S = " <abstraction> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$" <variables> "." <term> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z." <term> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z." <application> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z." <operand> <application\_opt> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z." <variable> <application\_opt> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z." <variable> <whitespace> <operand> <application\_opt> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x " <operand> <application\_opt> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x " <variable> <application\_opt> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x " <variable> <whitespace> <operand> <application\_opt> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x " <variable> <whitespace> <operand> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z " <operand> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z " <term\_par> "$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (" <term> ")$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (" <application> ")$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (" <operand> <application\_opt> ")$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (" <operand> <whitespace> <operand> <application\_opt> ")$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (" <operand> <whitespace> <operand> ")$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (" <variable> <whitespace> <variable> ")$\backslash$n" \\
-$\rightarrow$ "let S = $\backslash$x y z.x z (y z)$\backslash$n" \\
+<term> \\
+$\rightarrow$ <application> \\
+$\rightarrow$ <operand> <application\_opt> \\
+$\rightarrow$ <variable> <application\_opt> \\
+$\rightarrow$ <variable> <whitespace> <operand> <application\_opt> \\
+$\rightarrow$ "S " <operand> <application\_opt> \\
+$\rightarrow$ "S " <variable> <application\_opt> \\
+$\rightarrow$ "S " <variable> <whitespace> <operand> <application\_opt> \\
+$\rightarrow$ "S " <variable> <whitespace> <operand> \\
+$\rightarrow$ "S K " <operand> \\
+$\rightarrow$ "S K " <variable> \\
+$\rightarrow$ "S K K" \\
+
+<definition> \\
+$\rightarrow$ <declaration> <whitespace> "=" <whitespace> <term> \\
+$\rightarrow$ "let" <whitespace> <variable> <whitespace> "=" <whitespace> <term> \\
+$\rightarrow$ "let S = " <term> \\
+$\rightarrow$ "let S = " <abstraction> \\
+$\rightarrow$ "let S = $\backslash$" <variables> "." <term> \\
+$\rightarrow$ "let S = $\backslash$x y z." <term> \\
+$\rightarrow$ "let S = $\backslash$x y z." <application> \\
+$\rightarrow$ "let S = $\backslash$x y z." <operand> <application\_opt> \\
+$\rightarrow$ "let S = $\backslash$x y z." <variable> <application\_opt> \\
+$\rightarrow$ "let S = $\backslash$x y z." <variable> <whitespace> <operand> <application\_opt> \\
+$\rightarrow$ "let S = $\backslash$x y z.x " <operand> <application\_opt> \\
+$\rightarrow$ "let S = $\backslash$x y z.x " <variable> <application\_opt> \\
+$\rightarrow$ "let S = $\backslash$x y z.x " <variable> <whitespace> <operand> <application\_opt> \\
+$\rightarrow$ "let S = $\backslash$x y z.x " <variable> <whitespace> <operand> \\
+$\rightarrow$ "let S = $\backslash$x y z.x z " <operand> \\
+$\rightarrow$ "let S = $\backslash$x y z.x z " <term\_par> \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (" <term> ")" \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (" <application> ")" \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (" <operand> <application\_opt> ")" \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (" <operand> <whitespace> <operand> <application\_opt> ")" \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (" <operand> <whitespace> <operand> ")" \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (" <variable> <whitespace> <variable> ")" \\
+$\rightarrow$ "let S = $\backslash$x y z.x z (y z)" \\
 
 <program> \\
 $\rightarrow$ <expression> <program> \\
@@ -71,9 +82,10 @@ $\rightarrow$ <definition> <line\_end> <expression\_opt> <line\_end> <expression
 $\rightarrow$ <definition> <line\_end> <definition> <line\_end> <expression> \\
 $\rightarrow$ <definition> <line\_end> <definition> <line\_end> <expression\_opt> <line\_end> \\
 $\rightarrow$ <definition> <line\_end> <definition> <line\_end> <term> <line\_end> \\
-$\rightarrow$ \\
-"let S = $\backslash$x y z.x z (y z)$\backslash$n \\
+$\rightarrow$ " \\
+let S = $\backslash$x y z.x z (y z)$\backslash$n \\
 let K = $\backslash$x y.x$\backslash$n \\
-S K K$\backslash$0"
+S K K$\backslash$0 \\
+"
 
 \end{document}
