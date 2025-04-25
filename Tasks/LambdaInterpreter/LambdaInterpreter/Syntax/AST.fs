@@ -16,6 +16,7 @@ module AST =
     type Expression =
         | Definition of Variable * LambdaTerm
         | Result of LambdaTerm
+        | None
 
     /// The finalized program representation.
     type Program = Expression seq
@@ -50,17 +51,14 @@ module AST =
         | Primary.Abstraction ([], _) ->
             raise (ArgumentException "Abstraction received empty variable list")
 
-    /// Build a finalized program representation from the `primary` one.
-    let buildAST_Program (primary: Primary.Program) =
-        seq {
-            for expression in primary do
-                match expression with
-                | Primary.Definition (variable, term) ->
-                    yield Definition (variable, buildAST_Term term)
-                | Primary.Result term ->
-                    yield Result (buildAST_Term term)
-                | Epsilon -> ()
-        }
+    /// Build a finalized expression representation from the `primary` one.
+    let buildAST_Expression (primary: Primary.Expression) =
+        match primary with
+        | Primary.Definition (variable, term) ->
+            Definition (variable, buildAST_Term term)
+        | Primary.Result term ->
+            Result (buildAST_Term term)
+        | Epsilon -> None
 
     /// Get a string representation of the given lambda `term`.
     let rec toString (term: LambdaTerm) =

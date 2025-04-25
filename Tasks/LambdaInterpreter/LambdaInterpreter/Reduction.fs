@@ -36,6 +36,11 @@ module Reduction =
         | Application (left, right) ->
             Application (substitute left (Name var) sub, substitute right (Name var) sub)
 
+    /// Substitutes variables in `term` according to the `subs` mapping.
+    let substituteMany term (subs: Map<Variable, LambdaTerm>) =
+        subs
+        |> Seq.fold (fun acc pair -> substitute acc pair.Key pair.Value) term
+
     /// Performs beta-reduction of the given lambda `term`.
     /// Performs alpha-conversion if necessary.
     let rec reduce term =
