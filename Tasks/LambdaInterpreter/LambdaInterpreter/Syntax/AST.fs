@@ -61,3 +61,10 @@ module AST =
                     yield Result (buildAST_Term term)
                 | Epsilon -> ()
         }
+
+    /// Get a string representation of the given lambda `term`.
+    let rec toString (term: LambdaTerm) =
+        match term with
+        | Variable (Name var) -> var
+        | Application (left, right) -> $"{toString left} {toString right}"
+        | Abstraction (Name var, term) -> $"(\\{var}.{toString term})"
