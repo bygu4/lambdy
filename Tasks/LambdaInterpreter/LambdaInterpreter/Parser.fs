@@ -28,7 +28,7 @@ module Parser =
     let lineEnd = (?<)(skipNewline <|> eof)
 
     /// Accept the variable name.
-    let variable: Parser<Variable, obj> =
+    let variable: Parser<Variable, unit> =
         let isFirstVariableChar c = isLetter c
         let isVariableChar c = isLetter c || isDigit c || c = '_'
 

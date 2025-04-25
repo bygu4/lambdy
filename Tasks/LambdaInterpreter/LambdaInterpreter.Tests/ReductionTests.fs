@@ -1,8 +1,9 @@
-﻿module LambdaInterpreter.Tests
+﻿module Reduction.Tests
 
 open NUnit.Framework
 open FsUnit
 
+open LambdaInterpreter
 open AST
 open Reduction
 
