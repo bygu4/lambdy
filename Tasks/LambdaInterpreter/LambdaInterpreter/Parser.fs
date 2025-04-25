@@ -1,6 +1,7 @@
 namespace LambdaInterpreter
 
 open FParsec
+open Primary
 
 /// Module dealing with the source text parsing.
 module Parser =

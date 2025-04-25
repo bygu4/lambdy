@@ -6,26 +6,29 @@ type Variable = Name of string
 /// A list of variables.
 type Variables = Variable list
 
-/// A primary term representation.
-type Term =
-    | Application of Operand * ApplicationOpt
-    | Abstraction of Variables * Term
+/// Module defining primary syntax constructions.
+module Primary =
 
-/// Optional lambda term application.
-and ApplicationOpt =
-    | Apply of Operand * ApplicationOpt
-    | Epsilon
+    /// A primary term representation.
+    type Term =
+        | Application of Operand * ApplicationOpt
+        | Abstraction of Variables * Term
 
-/// An operand in lambda term application.
-and Operand =
-    | Variable of Variable
-    | Brackets of Term
+    /// Optional lambda term application.
+    and ApplicationOpt =
+        | Apply of Operand * ApplicationOpt
+        | Epsilon
 
-/// An expression as a logical unit of the program.
-type Expression =
-    | Definition of Variable * Term
-    | Result of Term
-    | Epsilon
+    /// An operand in lambda term application.
+    and Operand =
+        | Variable of Variable
+        | Brackets of Term
 
-/// Program as a list of expressions.
-type Program = Expression list
+    /// An expression as a logical unit of the program.
+    type Expression =
+        | Definition of Variable * Term
+        | Result of Term
+        | Epsilon
+
+    /// Program as a list of expressions.
+    type Program = Expression list
