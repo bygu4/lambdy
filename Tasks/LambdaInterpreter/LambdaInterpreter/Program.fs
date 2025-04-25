@@ -3,7 +3,7 @@ open System
 open LambdaInterpreter.Interpreter
 
 let printInfo () =
-    printf "
+    printfn "
 Lambda Interpreter
 ------------------
 A simple interpreter of lambda term expressions.
@@ -12,7 +12,7 @@ For more info use -h option.
 "
 
 let printHelp () =
-    printf "
+    printfn "
 Lambda Interpreter
 ------------------
 A simple interpreter of lambda term expressions.
