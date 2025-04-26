@@ -2,8 +2,8 @@ open System
 open System.IO
 
 open LambdaInterpreter
-open ExitCode
 open ColorScheme
+open ExitCode
 
 /// Print generic info about the app with a help suggestion.
 let printInfo () =

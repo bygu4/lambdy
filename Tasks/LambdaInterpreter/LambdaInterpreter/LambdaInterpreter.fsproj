@@ -12,8 +12,8 @@
     <Compile Include="Syntax/Parser.fs" />
     <Compile Include="Reduction.fs" />
     <Compile Include="Interpreter.fs" />
-    <Compile Include="ExitCode.fs" />
-    <Compile Include="ColorScheme.fs" />
+    <Compile Include="Console/ColorScheme.fs" />
+    <Compile Include="Console/ExitCode.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
