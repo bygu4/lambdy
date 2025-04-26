@@ -3,6 +3,7 @@ open System.IO
 
 open LambdaInterpreter
 open ExitCode
+open ColorScheme
 
 /// Print generic info about the app with a help suggestion.
 let printInfo () =
@@ -51,13 +52,13 @@ let printMessage (color: ConsoleColor) (message: string) =
     printfn "%s" message
     Console.ResetColor ()
 
-/// Print the result of interpretation according to the given `output`.
-let handleOutput (output: Result<string, string>) =
+/// Print the result of interpretation according to the given `output` using the given color `scheme`.
+let handleOutput (Color success, Color error) (output: Result<string, string>) =
     match output with
     | Ok result ->
-        if result.Length > 0 then printMessage ConsoleColor.Green (result + "\n")
+        if result.Length > 0 then printMessage success (result + "\n")
     | Error message ->
-        printMessage ConsoleColor.Yellow message
+        printMessage error message
 
 let args = Environment.GetCommandLineArgs ()
 
@@ -74,12 +75,13 @@ let interpreter =
             printMessage ConsoleColor.Red (ex.Message + "\n")
             exit <| int ExitCode.FileNotFound
 
-if interpreter.IsInteractive then printInfo () ; printInputPointer ()
+using interpreter (fun interpreter ->
+    let colorScheme = getColorScheme interpreter
+    if interpreter.IsInteractive then printInfo () ; printInputPointer ()
 
-using interpreter (fun interpreter -> 
     for output in interpreter.RunToEnd () do
-        handleOutput output
+        handleOutput colorScheme output
         if interpreter.IsInteractive then printInputPointer ()
-)
 
-getExitCode interpreter |> int |> exit
+    getExitCode interpreter |> int |> exit
+)

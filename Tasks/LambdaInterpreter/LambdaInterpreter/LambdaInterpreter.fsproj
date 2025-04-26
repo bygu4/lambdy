@@ -13,6 +13,7 @@
     <Compile Include="Reduction.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="ExitCode.fs" />
+    <Compile Include="ColorScheme.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

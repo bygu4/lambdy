@@ -9,6 +9,8 @@ open Parser
 open Reduction
 
 /// Class representing the lambda term interpreter.
+/// Create a parser instance to be run on the given `stream`.
+/// Use `interactive` parameter if the interpreter is meant to be run in console.
 type Interpreter (stream: Stream, ?interactive: bool) =
     let reader = new StreamReader (stream)
     let mutable vars = new Map<Variable, LambdaTerm> ([])
