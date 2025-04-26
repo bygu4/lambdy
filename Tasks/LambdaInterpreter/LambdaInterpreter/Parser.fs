@@ -6,11 +6,11 @@ open Primary
 /// Module dealing with the source text parsing.
 module Parser =
 
-    /// Accept 0 or more spaces.
-    let whitespaceOpt = spaces
+    /// Accept 0 or more whitespaces.
+    let whitespaceOpt = skipMany (choice [pchar ' '; pchar '\t'])
 
-    /// Accept 1 of more spaces.
-    let whitespace = spaces1
+    /// Accept 1 of more whitespaces.
+    let whitespace = skipMany1 (choice [pchar ' '; pchar '\t'])
 
     /// Accept optional whitespace on the left of the given `parser`.
     let ( ?< ) parser = whitespaceOpt >>. parser
@@ -35,7 +35,7 @@ module Parser =
         many1Satisfy2 isFirstVariableChar isVariableChar |>> Name
 
     /// Accept one or more of variable names.
-    let variables = variable .>>. many !<variable |>> fun (h, t) -> h :: t
+    let variables = sepBy1 variable whitespace
 
     /// Accept a primary lambda term representation.
     let term, termRef = createParserForwardedToRef ()
@@ -52,7 +52,7 @@ module Parser =
     let applicationOpt, applicationOptRef = createParserForwardedToRef ()
 
     applicationOptRef.Value <-
-        !<operand .>>. applicationOpt |>> Apply
+        attempt (!<operand .>>. applicationOpt) |>> Apply
         <|> preturn ApplicationOpt.Epsilon
 
     /// Accept a lambda term application or a single operand.

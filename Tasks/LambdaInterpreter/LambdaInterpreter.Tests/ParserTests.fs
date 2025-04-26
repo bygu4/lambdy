@@ -19,10 +19,12 @@ let testParser_WhiteSpace () =
     [
         "", whitespaceOpt, Some 0;
         "\t", whitespaceOpt, Some 1;
-        "   \n", whitespaceOpt, Some 4;
+        "  \t\t  ", whitespaceOpt, Some 6;
+        "   \n", whitespaceOpt, Some 3;
         "", whitespace, None;
         " ", whitespace, Some 1;
-        "\n", whitespace, Some 1;
+        "\n", whitespace, None;
+        "  \t\t    a", whitespace, Some 8;
         "a1", whitespace, None;
     ] |> runTest
 
@@ -70,12 +72,13 @@ let testParser_Operand () =
         "var1", operand, Some 4;
         "()", operand, None;
         "(some_var)", operand, Some 10;
+        "(   XYZ )", operand, Some 9;
         "_not_a_var", operand, None;
         "A B", operand, Some 1;
         "((var)", operand, None;
-        "(((ololo)))", operand, Some 11;
+        "( ((ololo ))  )", operand, Some 15;
         "\\x.y", operand, None;
-        "(first second)", operand, Some 14;
+        "(first  second )", operand, Some 16;
         "(\\u v w.v)", operand, Some 10;
         "((\\x.x) i j)", operand, Some 12;
     ] |> runTest
@@ -86,13 +89,13 @@ let testParser_Application () =
         "a", application, Some 1;
         "(var_1)", application, Some 7;
         "X Y", application, Some 3;
-        "(ololo) (abc)", application, Some 13;
+        "( ololo ) (abc)", application, Some 15;
         "a1    a2    a3", application, Some 14;
         "(_xyz)", application, None;
-        "(var1) 2var", application, None;
+        "(var1) 2var", application, Some 6;
         "(a b)   c", application, Some 9;
         "var (\\x.x z)", application, Some 12;
-        "((\\A1 B2 C3.A1) ololo)  var1", application, Some 28;
+        "(  (\\A1 B2 C3.A1) ololo)  var1", application, Some 30;
     ] |> runTest
 
 [<Test>]
@@ -113,7 +116,7 @@ let testParser_Abstraction () =
 let testParser_Term () =
     [
         "var1", term, Some 4;
-        "((ololo))", term, Some 9;
+        "((ololo) )", term, Some 10;
         "(\\x y.x)", term, Some 8;
         "\\x y z.x z (y z)", term, Some 16;
         "S K   K", term, Some 7;
@@ -152,9 +155,9 @@ let testParser_Definition () =
 [<Test>]
 let testParser_Expression () =
     [
-        "let S = \\x y z.x z (y z)", expression, Some 24;
+        "let S = \\x y z.x z (y z)\n", expression, Some 25;
         "let K = \\x y.x", expression, Some 14;
-        "S K K", expression, Some 5;
+        "S K K \n", expression, Some 7;
         "\n", expression, Some 1;
         "       \n", expression, Some 8;
         "_wewq", expression, None;
