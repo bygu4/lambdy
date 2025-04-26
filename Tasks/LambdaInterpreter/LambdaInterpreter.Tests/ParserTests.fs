@@ -20,22 +20,23 @@ let testParser_WhiteSpace () =
         "", whitespaceOpt, Some 0;
         "\t", whitespaceOpt, Some 1;
         "  \t\t  ", whitespaceOpt, Some 6;
-        "   \n", whitespaceOpt, Some 3;
+        "   \n", whitespaceOpt, Some 4;
         "", whitespace, None;
         " ", whitespace, Some 1;
-        "\n", whitespace, None;
+        "\n", whitespace, Some 1;
         "  \t\t    a", whitespace, Some 8;
         "a1", whitespace, None;
     ] |> runTest
 
 [<Test>]
-let testParser_LineEnd () =
+let testParser_InputEnd () =
     [
-        "", lineEnd, Some 0;
-        "     ", lineEnd, Some 5;
-        "\n", lineEnd, Some 1;
-        "   \n", lineEnd, Some 4;
-        "a12", lineEnd, None;
+        "", inputEnd, Some 0;
+        "     ", inputEnd, Some 5;
+        "\n", inputEnd, Some 1;
+        "   \n", inputEnd, Some 4;
+        "a12", inputEnd, None;
+        "  1   ", inputEnd, None;
     ] |> runTest
 
 [<Test>]
@@ -50,6 +51,10 @@ let testParser_Variable () =
         "100qwe", variable, None;
         "ololo%", variable, Some 5;
         "  ,  ", variable, None;
+        "@test", variable, None;
+        "let", variable, None;
+        "letvar", variable, Some 6;
+        "not_a_let", variable, Some 9;
     ] |> runTest
 
 [<Test>]
@@ -96,6 +101,7 @@ let testParser_Application () =
         "(a b)   c", application, Some 9;
         "var (\\x.x z)", application, Some 12;
         "(  (\\A1 B2 C3.A1) ololo)  var1", application, Some 30;
+        "var1  (var2)   var3  \t ", application, Some 19;
     ] |> runTest
 
 [<Test>]
@@ -119,7 +125,7 @@ let testParser_Term () =
         "((ololo) )", term, Some 10;
         "(\\x y.x)", term, Some 8;
         "\\x y z.x z (y z)", term, Some 16;
-        "S K   K", term, Some 7;
+        "S K   K ", term, Some 7;
         "((\\a.a)   tmp)  (\\x.\\y.\\z.y z x)", term, Some 32;
         "(term))", term, Some 6;
         "\\x.\\y", term, None;
@@ -131,11 +137,13 @@ let testParser_Term () =
 let testParser_Declaration () =
     [
         "let VAR", declaration, Some 7;
+        "let", declaration, None;
         "olet a", declaration, None;
         "   let xy", declaration, None;
         "let    tmp", declaration, Some 10;
         "foo", declaration, None;
         "bar ololo", declaration, None;
+        "let let", declaration, None;
     ] |> runTest
 
 [<Test>]
@@ -150,6 +158,7 @@ let testParser_Definition () =
         "foo bar = baz", definition, None;
         "let v1    =   v2", definition, Some 16;
         "let term = ", definition, None;
+        "let let = X Y Z", definition, None;
     ] |> runTest
 
 [<Test>]
@@ -157,11 +166,12 @@ let testParser_Expression () =
     [
         "let S = \\x y z.x z (y z)\n", expression, Some 25;
         "let K = \\x y.x", expression, Some 14;
-        "S K K \n", expression, Some 7;
+        "S K K \t\n", expression, Some 8;
         "\n", expression, Some 1;
         "       \n", expression, Some 8;
         "_wewq", expression, None;
         "123\n", expression, None;
         "", expression, Some 0;
         "variable", expression, Some 8;
+        "let test = (\\x.x) y,  ", expression, None;
     ] |> runTest

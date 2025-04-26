@@ -1,6 +1,6 @@
 open System
 
-open LambdaInterpreter.Interpreter
+open LambdaInterpreter
 
 let printInfo () =
     printfn "
@@ -37,6 +37,25 @@ Examples:
     S K K
 "
 
+type ExitCode =
+    | Success = 0
+    | Error = 1
+
+/// Run the given `interpreter` to the end of stream.
+let runInterpreter (interpreter: Interpreter) =
+    while not interpreter.EndOfStream do
+        async {
+            if interpreter.IsInteractive then printf "-> "
+            let! output = interpreter.RunOnNextLineAsync ()
+            do
+                match output with
+                | Ok message | Error message -> printfn "%s" message
+        } |> Async.RunSynchronously
+
+let getExitCode (interpreter: Interpreter) =
+    if interpreter.IsInteractive || not interpreter.HadError then ExitCode.Success
+    else ExitCode.Error
+
 let args = Environment.GetCommandLineArgs ()
 
 if Array.contains "-h" args || Array.contains "--help" args then
@@ -44,9 +63,11 @@ if Array.contains "-h" args || Array.contains "--help" args then
     exit 0
 
 printInfo ()
-let output = runInterpreterInConsole ()
 
-let hasErrors = output |> Seq.exists (function | Error _ -> true | Ok _ -> false)
-let exitCode = if hasErrors then 1 else 0
+let interpreter  =
+    if args.Length = 1 then new Interpreter (args.[0])
+    else new Interpreter ()
 
-exit exitCode
+using interpreter runInterpreter
+
+getExitCode interpreter |> int |> exit

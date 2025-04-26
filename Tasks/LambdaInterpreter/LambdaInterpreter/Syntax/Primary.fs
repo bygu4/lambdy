@@ -24,11 +24,8 @@ module Primary =
         | Variable of Variable
         | Brackets of Term
 
-    /// An expression as a logical unit of the program.
+    /// An expression as a variable definition or a term result.
     type Expression =
         | Definition of Variable * Term
         | Result of Term
         | Epsilon
-
-    /// Program as a list of expressions.
-    type Program = Expression list

@@ -1,46 +1,60 @@
 namespace LambdaInterpreter
 
 open System
-open System.Text
+open System.IO
 open FParsec
 
 open AST
 open Parser
 open Reduction
 
-/// Module dealing with lambda term interpretation.
-module Interpreter =
+/// Class representing the lambda term interpreter.
+type Interpreter (stream: Stream, ?interactive: bool) =
+    let reader = new StreamReader (stream)
+    let mutable vars = new Map<Variable, LambdaTerm> ([])
+    let mutable error = false
 
-    /// Run the interpreter to the end of the given `stream`.
-    let runInterpreter (interactive: bool) (stream: CharStream<_>) =
-        let mutable vars = new Map<Variable, LambdaTerm> ([])
-        seq {
-            while not stream.IsEndOfStream do
-                if interactive then printf "-> "
-                let reply = expression stream
-                if reply.Status = Ok then
-                    let expr = reply.Result |> buildAST_Expression
-                    match expr with
-                    | Definition (var, term) ->
-                        vars <- vars.Add (var, substituteMany term vars)
-                    | Result term ->
-                        let result = substituteMany term vars |> reduce |> toString
-                        if interactive then printfn "%s" result
-                        yield Result.Ok result
-                    | None -> ()
-                else
-                    let message = reply.Error.Head.ToString ()
-                    if interactive then printfn "%s" message
-                    yield Result.Error message
+    /// Create interpreter for the standard console input.
+    new () = new Interpreter (Console.OpenStandardInput ())
+
+    /// Create interpreter for the source file at the given `path`.
+    new (path: string) = new Interpreter (File.OpenRead path)
+
+    /// Whether the interpreter is interactive.
+    member _.IsInteractive: bool = defaultArg interactive false
+
+    /// Whether the end of stream was reached by the interpreter.
+    member _.EndOfStream: bool = reader.EndOfStream
+
+    /// Whether an error occurred during the interpretation.
+    member _.HadError: bool = error
+
+    /// Analyze the next line in the stream and get the interpretation result.
+    member _.RunOnNextLineAsync (): Async<Result<string, string>> =
+
+        /// Interpret the given `primary` expression representation.
+        let interpretExpression primary =
+            match buildAST_Expression primary with
+            | Definition (var, term) ->
+                vars <- vars.Add (var, substituteMany term vars)
+                Result.Ok String.Empty
+            | Result term ->
+                let result = substituteMany term vars |> reduce |> toString
+                Result.Ok result
+            | Empty -> Result.Ok String.Empty
+
+        async {
+            let! line = reader.ReadLineAsync () |> Async.AwaitTask
+            let parserResult = line |> run expression
+            return
+                match parserResult with
+                | Success (expr, _, _) -> interpretExpression expr
+                | Failure (msg, _, _) ->
+                    error <- true
+                    Result.Error msg
         }
 
-    /// Run the interpreter on a source file at the given `path`.
-    let runInterpreterOnFile (path: string) =
-        use stream = new CharStream<_> (path, Encoding.UTF8)
-        runInterpreter false stream
+    interface IDisposable with
 
-    /// Interactively run the interpreter in the console.
-    let runInterpreterInConsole () =
-        use inputStream = Console.OpenStandardInput ()
-        let stream = new CharStream<_> (inputStream, Encoding.UTF8)
-        runInterpreter true stream
+        /// Free resources used by the interpreter.
+        member _.Dispose () = reader.Dispose ()

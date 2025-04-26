@@ -6,11 +6,17 @@ open Primary
 /// Module dealing with the source text parsing.
 module Parser =
 
-    /// Accept 0 or more whitespaces.
-    let whitespaceOpt = skipMany (choice [pchar ' '; pchar '\t'])
+    let variablePattern = @"[a-zA-Z][a-zA-Z0-9_]*"
+    let declarationKeyword = "let"
 
-    /// Accept 1 of more whitespaces.
-    let whitespace = skipMany1 (choice [pchar ' '; pchar '\t'])
+    let keywords = [declarationKeyword]
+    let isKeyword str = List.contains str keywords
+
+    /// Accept 0 or more whitespaces.
+    let whitespaceOpt = spaces
+
+    /// Accept 1 or more whitespaces.
+    let whitespace = spaces1
 
     /// Accept optional whitespace on the left of the given `parser`.
     let ( ?< ) parser = whitespaceOpt >>. parser
@@ -24,15 +30,21 @@ module Parser =
     /// Accept whitespace on the right of the given `parser`.
     let ( !> ) parser = parser .>> whitespace
 
-    /// Accept the end of line with optional whitespace.
-    let lineEnd = (?<)(skipNewline <|> eof)
+    /// Accept optional whitespace followed by end of the input.
+    let inputEnd = (?<)eof
+
+    /// Modifies the given parser `reply` to check whether the given `predicate` is not satisfied.
+    let except (predicate: 'a -> bool) (reply: Reply<'a>) =
+        if reply.Status = ReplyStatus.Ok then
+            if reply.Result |> predicate |> not then Reply reply.Result
+            else Reply (
+                ReplyStatus.Error,
+                ErrorMessage.Unexpected $"Unexpected value: {reply.Result}" |> ErrorMessageList
+            )
+        else reply
 
     /// Accept the variable name.
-    let variable: Parser<Variable, unit> =
-        let isFirstVariableChar c = isLetter c
-        let isVariableChar c = isLetter c || isDigit c || c = '_'
-
-        many1Satisfy2 isFirstVariableChar isVariableChar |>> Name
+    let variable: Parser<Variable, unit> = regex variablePattern >> except isKeyword |>> Name
 
     /// Accept one or more of variable names.
     let variables = sepBy1 variable whitespace
@@ -45,15 +57,15 @@ module Parser =
         between ((?>)(pchar '(')) ((?<)(pchar ')')) term |>> Brackets
         <|> (variable |>> Variable)
 
-    /// Accept a lambda abstraction.
-    let abstraction = between (pchar '\\') (pchar '.') variables .>>. term |>> Abstraction
-
     /// Accept an optional lambda term application.
     let applicationOpt, applicationOptRef = createParserForwardedToRef ()
 
     applicationOptRef.Value <-
         attempt (!<operand .>>. applicationOpt) |>> Apply
         <|> preturn ApplicationOpt.Epsilon
+
+    /// Accept a lambda abstraction.
+    let abstraction = between (pchar '\\') (pchar '.') variables .>>. term |>> Abstraction
 
     /// Accept a lambda term application or a single operand.
     let application = operand .>>. applicationOpt |>> Application
@@ -63,14 +75,11 @@ module Parser =
     /// Accept a variable declaration.
     let declaration = pstring "let" >>. !<variable 
 
-    /// Accept a variable declaration with initialization.
+    /// Accept a variable declaration with assignment.
     let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition
 
-    /// Accept an optional expression of a program.
+    /// Accept an expression or an empty string.
     let expressionOpt = choice [definition; term |>> Result; preturn Epsilon]
 
-    /// Accept an expression of a program or a line break.
-    let expression = expressionOpt .>> lineEnd
-
-    /// Accept a program as a list of expressions.
-    let program = many expression
+    /// Accept an expression or an empty string followed by end of the input.
+    let expression = expressionOpt .>> inputEnd
