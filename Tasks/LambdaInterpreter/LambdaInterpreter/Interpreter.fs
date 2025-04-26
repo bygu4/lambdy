@@ -15,7 +15,7 @@ type Interpreter (stream: Stream, ?interactive: bool) =
     let mutable error = false
 
     /// Create interpreter for the standard console input.
-    new () = new Interpreter (Console.OpenStandardInput ())
+    new () = new Interpreter (Console.OpenStandardInput (), true)
 
     /// Create interpreter for the source file at the given `path`.
     new (path: string) = new Interpreter (File.OpenRead path)
@@ -52,6 +52,14 @@ type Interpreter (stream: Stream, ?interactive: bool) =
                 | Failure (msg, _, _) ->
                     error <- true
                     Result.Error msg
+        }
+
+    /// Run the interpreter until the end of stream.
+    /// Yield interpretation result for each of the lines.
+    member self.RunToEnd (): Result<string, string> seq =
+        seq {
+            while not self.EndOfStream do
+                yield Async.RunSynchronously <| self.RunOnNextLineAsync ()
         }
 
     interface IDisposable with

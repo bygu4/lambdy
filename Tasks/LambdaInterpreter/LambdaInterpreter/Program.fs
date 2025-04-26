@@ -1,7 +1,10 @@
 open System
+open System.IO
 
 open LambdaInterpreter
+open ExitCode
 
+/// Print generic info about the app with a help suggestion.
 let printInfo () =
     printfn "
 Lambda Interpreter
@@ -11,6 +14,7 @@ A simple interpreter of lambda term expressions.
 For more info use -h option.
 "
 
+/// Print command line help.
 let printHelp () =
     printfn "
 Lambda Interpreter
@@ -37,37 +41,45 @@ Examples:
     S K K
 "
 
-type ExitCode =
-    | Success = 0
-    | Error = 1
+/// Print a pointer indicating the start of input when running the interactive interpreter.
+let printInputPointer () =
+    printf "-> "
 
-/// Run the given `interpreter` to the end of stream.
-let runInterpreter (interpreter: Interpreter) =
-    while not interpreter.EndOfStream do
-        async {
-            if interpreter.IsInteractive then printf "-> "
-            let! output = interpreter.RunOnNextLineAsync ()
-            do
-                match output with
-                | Ok message | Error message -> printfn "%s" message
-        } |> Async.RunSynchronously
+/// Print the given `message` to the standard output with the given `color`.
+let printMessage (color: ConsoleColor) (message: string) =
+    Console.ForegroundColor <- color
+    printfn "%s" message
+    Console.ResetColor ()
 
-let getExitCode (interpreter: Interpreter) =
-    if interpreter.IsInteractive || not interpreter.HadError then ExitCode.Success
-    else ExitCode.Error
+/// Print the result of interpretation according to the given `output`.
+let handleOutput (output: Result<string, string>) =
+    match output with
+    | Ok result ->
+        if result.Length > 0 then printMessage ConsoleColor.Green (result + "\n")
+    | Error message ->
+        printMessage ConsoleColor.Yellow message
 
 let args = Environment.GetCommandLineArgs ()
 
 if Array.contains "-h" args || Array.contains "--help" args then
     printHelp ()
-    exit 0
+    exit <| int ExitCode.Success
 
-printInfo ()
+let interpreter =
+    try
+        if args.Length = 2 then new Interpreter (args.[1])
+        else new Interpreter ()
+    with
+        | :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
+            printMessage ConsoleColor.Red (ex.Message + "\n")
+            exit <| int ExitCode.FileNotFound
 
-let interpreter  =
-    if args.Length = 1 then new Interpreter (args.[0])
-    else new Interpreter ()
+if interpreter.IsInteractive then printInfo () ; printInputPointer ()
 
-using interpreter runInterpreter
+using interpreter (fun interpreter -> 
+    for output in interpreter.RunToEnd () do
+        handleOutput output
+        if interpreter.IsInteractive then printInputPointer ()
+)
 
 getExitCode interpreter |> int |> exit

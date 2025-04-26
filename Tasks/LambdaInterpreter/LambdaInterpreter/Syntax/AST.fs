@@ -19,25 +19,23 @@ module AST =
         | Empty
 
     /// Build AST of a lambda term using the `primary` representation.
-    let buildAST_Term: Primary.Term -> LambdaTerm = Unchecked.defaultof<_>
-    let buildAST_Term_Ref = ref buildAST_Term
+    let rec buildAST_Term (primary: Primary.Term) =
 
-    /// Convert `primary` operand representation to the lambda term.
-    let buildAST_Operand (primary: Primary.Operand) =
-        match primary with
-        | Primary.Variable var -> Variable var
-        | Brackets term -> buildAST_Term term
+        /// Convert `primary` operand representation to the lambda term.
+        let buildAST_Operand (primary: Primary.Operand) =
+            match primary with
+            | Primary.Variable var -> Variable var
+            | Brackets term -> buildAST_Term term
 
-    /// Build AST of lambda term application using term on the `left` and the rest on `right`.
-    let rec buildAST_Application (left: LambdaTerm, right: Primary.ApplicationOpt) =
-        match right with
-        | Apply (operand, rest) ->
-            let right = buildAST_Operand operand
-            let partial = Application (left, right)
-            buildAST_Application (partial, rest)
-        | ApplicationOpt.Epsilon -> left
+        /// Build AST of lambda term application using term on the `left` and the rest on `right`.
+        let rec buildAST_Application (left: LambdaTerm, right: Primary.ApplicationOpt) =
+            match right with
+            | Apply (operand, rest) ->
+                let right = buildAST_Operand operand
+                let partial = Application (left, right)
+                buildAST_Application (partial, rest)
+            | ApplicationOpt.Epsilon -> left
 
-    buildAST_Term_Ref.Value <- fun primary ->
         match primary with
         | Primary.Application (operand, rest) ->
             let operand = buildAST_Operand operand

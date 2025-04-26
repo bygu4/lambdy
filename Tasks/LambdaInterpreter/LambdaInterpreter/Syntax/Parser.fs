@@ -33,18 +33,17 @@ module Parser =
     /// Accept optional whitespace followed by end of the input.
     let inputEnd = (?<)eof
 
-    /// Modifies the given parser `reply` to check whether the given `predicate` is not satisfied.
-    let except (predicate: 'a -> bool) (reply: Reply<'a>) =
-        if reply.Status = ReplyStatus.Ok then
-            if reply.Result |> predicate |> not then Reply reply.Result
-            else Reply (
+    /// Modifies the given `reply` to check that its result is not a keyword.
+    let exceptKeyword (reply: Reply<string>) =
+        if reply.Status = ReplyStatus.Ok && isKeyword reply.Result then
+            Reply (
                 ReplyStatus.Error,
-                ErrorMessage.Unexpected $"Unexpected value: {reply.Result}" |> ErrorMessageList
+                ErrorMessage.Unexpected $"\"{reply.Result}\" is reserved as a keyword" |> ErrorMessageList
             )
         else reply
 
     /// Accept the variable name.
-    let variable: Parser<Variable, unit> = regex variablePattern >> except isKeyword |>> Name
+    let variable: Parser<Variable, unit> = regex variablePattern >> exceptKeyword |>> Name
 
     /// Accept one or more of variable names.
     let variables = sepBy1 variable whitespace
