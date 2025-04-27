@@ -31,8 +31,9 @@ Examples:
     \\z.z
 
 Commands:
-    {ClearKeyword}\t\t Clear the list of defined variables
+    {ResetKeyword}\t\t Reset defined variables
     {HelpKeyword}\t\t Display help
+    {ClearKeyword}\t\t Clear console buffer
     {ExitKeyword}\t\t Stop the execution and exit
 "
 
@@ -59,8 +60,9 @@ Commands:
         /// Execute the given special interpreter `command`.
         let runCommand (command: SpecialCommand) =
             match command with
-            | Clear -> vars <- new Map<Variable, LambdaTerm> ([])
+            | Reset -> vars <- new Map<Variable, LambdaTerm> ([])
             | Help -> if interactive then Interpreter.PrintHelp ()
+            | Clear -> if interactive then Console.Clear ()
             | Exit -> reader.Close ()
             Result.Ok String.Empty
 

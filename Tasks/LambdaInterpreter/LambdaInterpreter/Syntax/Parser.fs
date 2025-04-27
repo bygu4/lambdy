@@ -73,17 +73,20 @@ module Parser =
     /// Accept a variable declaration with assignment.
     let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition
 
-    /// Accept a keyword for clearing the variable list.
-    let clear: Parser<Expression, unit> = pstring ClearKeyword >>. preturn (Command Clear)
+    /// Accept a keyword for resetting defined variables.
+    let reset: Parser<Expression, unit> = pstring ResetKeyword >>. preturn (Command Reset)
 
     /// Accept a keyword for displaying help.
     let help: Parser<Expression, unit> = pstring HelpKeyword >>. preturn (Command Help)
+
+    /// Accept a keyword for clearing the console buffer.
+    let clear: Parser<Expression, unit> = pstring ClearKeyword >>. preturn (Command Clear)
 
     /// Accept a keyword for exiting the interpreter.
     let exit: Parser<Expression, unit> = pstring ExitKeyword >>. preturn (Command Exit)
 
     /// Accept a special interpreter command.
-    let command = choice [clear; help; exit]
+    let command = choice [reset; help; clear; exit]
 
     /// Accept an expression or an empty string.
     let expressionOpt = choice [attempt term |>> Result; definition; command; preturn Epsilon]

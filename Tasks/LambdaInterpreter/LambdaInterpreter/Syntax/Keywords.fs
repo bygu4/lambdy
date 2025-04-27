@@ -11,13 +11,17 @@ module Keywords =
     [<Literal>]
     let DeclarationKeyword = "let"
 
-    /// Keyword for clearing the list of defined variables.
+    /// Keyword for resetting defined variables.
     [<Literal>]
-    let ClearKeyword = "clear"
+    let ResetKeyword = "reset"
 
     /// Keyword for displaying help info.
     [<Literal>]
     let HelpKeyword = "help"
+
+    /// Keyword for clearing the console buffer.
+    [<Literal>]
+    let ClearKeyword = "clear"
 
     /// Keyword for exiting the interpreter.
     [<Literal>]
@@ -26,8 +30,9 @@ module Keywords =
     /// The list of defined keywords.
     let keywords = [
         DeclarationKeyword;
-        ClearKeyword;
+        ResetKeyword;
         HelpKeyword;
+        ClearKeyword;
         ExitKeyword;
     ]
 

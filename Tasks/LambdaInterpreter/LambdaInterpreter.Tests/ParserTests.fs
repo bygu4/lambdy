@@ -168,13 +168,15 @@ let testParser_Definition () =
 [<Test>]
 let testParser_Command () =
     [
-        "clear", command, Some 5;
+        "reset", command, Some 5;
         "help", command, Some 4;
+        "clear", command, Some 5;
         "exit", command, Some 4;
         "not_help", command, None;
         "exitCode", command, Some 4;
         "   clear", command, None;
         "exit  \t  ", command, Some 4;
+        "reset vars", command, Some 5;
     ] |> runTest
 
 [<Test>]
@@ -193,7 +195,7 @@ let testParser_Expression () =
         "variable", expression, Some 8;
         "let test = (\\x.x) y,  ", expression, None;
         "help  \t", expression, Some 7;
-        "clear vars", expression, None;
+        "clear buff", expression, None;
         "let ololo_exit = (\\x.\\y.x ) z\n", expression, Some 30;
         "a clear", expression, None;
         "\n  exit", expression, None;
