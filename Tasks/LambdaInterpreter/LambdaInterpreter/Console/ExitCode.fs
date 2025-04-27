@@ -16,5 +16,5 @@ module ExitCode =
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
     let getExitCode (interpreter: Interpreter) =
-        if interpreter.IsInteractive || not interpreter.HadError then ExitCode.Success
+        if interpreter.IsInteractive || not interpreter.SyntaxError then ExitCode.Success
         else ExitCode.SyntaxError

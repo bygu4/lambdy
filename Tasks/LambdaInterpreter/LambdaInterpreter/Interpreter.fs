@@ -4,38 +4,68 @@ open System
 open System.IO
 open FParsec
 
+open Keywords
 open AST
 open Parser
 open Reduction
 
 /// Class representing the lambda term interpreter.
-/// Create a parser instance to be run on the given `stream`.
-/// Use `interactive` parameter if the interpreter is meant to be run in console.
-type Interpreter (stream: Stream, ?interactive: bool) =
+type Interpreter private (stream: Stream, interactive: bool) =
     let reader = new StreamReader (stream)
     let mutable vars = new Map<Variable, LambdaTerm> ([])
     let mutable error = false
 
-    /// Create interpreter for the standard console input.
-    new () = new Interpreter (Console.OpenStandardInput (), true)
+    /// Print help info to the standard output.
+    static member PrintHelp () = printfn $"
+Syntax:
+    variable\t\t {VariablePattern}
+    term\t\t {{variable}}|{{abstraction}}|{{application}}|({{term}})
+    application\t\t {{term}} {{term}}
+    abstraction\t\t \\{{variables}}.{{term}}
+    definition\t\t {DeclarationKeyword} {{variable}} = {{term}}
 
-    /// Create interpreter for the source file at the given `path`.
-    new (path: string) = new Interpreter (File.OpenRead path)
+Examples:
+    -> {DeclarationKeyword} S = \\x y z.x z (y z)
+    -> {DeclarationKeyword} K = \\x y.x
+    -> S K K
+    \\z.z
+
+Commands:
+    {ClearKeyword}\t\t Clear the list of defined variables
+    {HelpKeyword}\t\t Display help
+    {ExitKeyword}\t\t Stop the execution and exit
+"
+
+    /// Create an interactive interpreter for the standard console input.
+    static member StartInteractive (): Interpreter =
+        new Interpreter (Console.OpenStandardInput (), true)
+
+    /// Create an interpreter to run on source file at the given `path`.
+    static member StartOnFile (path: string): Interpreter =
+        new Interpreter (File.OpenRead path, false)
 
     /// Whether the interpreter is interactive.
-    member _.IsInteractive: bool = defaultArg interactive false
+    member _.IsInteractive: bool = interactive
 
     /// Whether the end of stream was reached by the interpreter.
     member _.EndOfStream: bool = reader.EndOfStream
 
-    /// Whether an error occurred during the interpretation.
-    member _.HadError: bool = error
+    /// Whether a syntax error occurred during the interpretation.
+    member _.SyntaxError: bool = error
 
     /// Analyze the next line in the stream and get the interpretation result.
     member _.RunOnNextLineAsync (): Async<Result<string, string>> =
 
+        /// Execute the given special interpreter `command`.
+        let runCommand (command: SpecialCommand) =
+            match command with
+            | Clear -> vars <- new Map<Variable, LambdaTerm> ([])
+            | Help -> if interactive then Interpreter.PrintHelp ()
+            | Exit -> reader.Close ()
+            Result.Ok String.Empty
+
         /// Interpret the given `primary` expression representation.
-        let interpretExpression primary =
+        let interpretExpression (primary: Primary.Expression) =
             match buildAST_Expression primary with
             | Definition (var, term) ->
                 vars <- vars.Add (var, substituteMany term vars)
@@ -43,6 +73,7 @@ type Interpreter (stream: Stream, ?interactive: bool) =
             | Result term ->
                 let result = substituteMany term vars |> reduce |> toString
                 Result.Ok result
+            | Command command -> runCommand command
             | Empty -> Result.Ok String.Empty
 
         async {
@@ -58,13 +89,16 @@ type Interpreter (stream: Stream, ?interactive: bool) =
 
     /// Run the interpreter until the end of stream.
     /// Yield interpretation result for each of the lines.
-    member self.RunToEnd (): Result<string, string> seq =
+    member self.RunToEnd (): Async<Result<string, string>> seq =
         seq {
-            while not self.EndOfStream do
-                yield Async.RunSynchronously <| self.RunOnNextLineAsync ()
+            while stream.CanRead do
+                yield self.RunOnNextLineAsync ()
         }
 
     interface IDisposable with
 
         /// Free resources used by the interpreter.
         member _.Dispose () = reader.Dispose ()
+
+    /// Free resources used by the interpreter.
+    member _.Dispose () = reader.Dispose ()

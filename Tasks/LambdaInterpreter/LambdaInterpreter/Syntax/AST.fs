@@ -16,6 +16,7 @@ module AST =
     type Expression =
         | Definition of Variable * LambdaTerm
         | Result of LambdaTerm
+        | Command of SpecialCommand
         | Empty
 
     /// Build AST of a lambda term using the `primary` representation.
@@ -51,6 +52,7 @@ module AST =
         match primary with
         | Primary.Definition (variable, term) -> Definition (variable, buildAST_Term term)
         | Primary.Result term -> Result (buildAST_Term term)
+        | Primary.Command command -> Command command
         | Epsilon -> Empty
 
     /// Get a string representation of the given lambda `term`.

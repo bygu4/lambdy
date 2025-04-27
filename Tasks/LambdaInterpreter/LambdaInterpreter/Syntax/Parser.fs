@@ -1,16 +1,12 @@
 namespace LambdaInterpreter
 
 open FParsec
+
+open Keywords
 open Primary
 
 /// Module dealing with the source text parsing.
 module Parser =
-
-    let variablePattern = @"[a-zA-Z][a-zA-Z0-9_]*"
-    let declarationKeyword = "let"
-
-    let keywords = [declarationKeyword]
-    let isKeyword str = List.contains str keywords
 
     /// Accept 0 or more whitespaces.
     let whitespaceOpt = spaces
@@ -43,7 +39,7 @@ module Parser =
         else reply
 
     /// Accept the variable name.
-    let variable: Parser<Variable, unit> = regex variablePattern >> exceptKeyword |>> Name
+    let variable: Parser<Variable, unit> = regex VariablePattern >> exceptKeyword |>> Name
 
     /// Accept one or more of variable names.
     let variables = sepBy1 variable whitespace
@@ -77,8 +73,20 @@ module Parser =
     /// Accept a variable declaration with assignment.
     let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition
 
+    /// Accept a keyword for clearing the variable list.
+    let clear: Parser<Expression, unit> = pstring ClearKeyword >>. preturn (Command Clear)
+
+    /// Accept a keyword for displaying help.
+    let help: Parser<Expression, unit> = pstring HelpKeyword >>. preturn (Command Help)
+
+    /// Accept a keyword for exiting the interpreter.
+    let exit: Parser<Expression, unit> = pstring ExitKeyword >>. preturn (Command Exit)
+
+    /// Accept a special interpreter command.
+    let command = choice [clear; help; exit]
+
     /// Accept an expression or an empty string.
-    let expressionOpt = choice [definition; term |>> Result; preturn Epsilon]
+    let expressionOpt = choice [attempt term |>> Result; definition; command; preturn Epsilon]
 
     /// Accept an expression or an empty string followed by end of the input.
     let expression = expressionOpt .>> inputEnd

@@ -6,6 +6,12 @@ type Variable = Name of string
 /// A list of variables.
 type Variables = Variable list
 
+/// A special command for managing the interpreter execution.
+type SpecialCommand =
+    | Clear
+    | Help
+    | Exit
+
 /// Module defining primary syntax constructions.
 module Primary =
 
@@ -28,4 +34,5 @@ module Primary =
     type Expression =
         | Definition of Variable * Term
         | Result of Term
+        | Command of SpecialCommand
         | Epsilon

@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="ParserTests.fs" />
     <Compile Include="ReductionTests.fs" />
+    <Compile Include="InterpreterTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -20,5 +21,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LambdaInterpreter\LambdaInterpreter.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="TestFiles/**">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

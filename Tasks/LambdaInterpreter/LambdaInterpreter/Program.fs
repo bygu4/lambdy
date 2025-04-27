@@ -5,14 +5,14 @@ open LambdaInterpreter
 open ColorScheme
 open ExitCode
 
-/// Print generic info about the app with a help suggestion.
-let printInfo () =
+/// Print header with general info about the app and a help suggestion.
+let printHeader () =
     printfn "
 Lambda Interpreter
 ------------------
 A simple interpreter of lambda term expressions.
 
-For more info use -h option.
+Type 'help' for more info.
 "
 
 /// Print command line help.
@@ -21,6 +21,8 @@ let printHelp () =
 Lambda Interpreter
 ------------------
 A simple interpreter of lambda term expressions.
+It can either be run interactively using the standard input,
+or on a specified source file.
 
 Usage:
     LambdaInterpreter [options]\t\t Run interpreter interactively
@@ -28,19 +30,7 @@ Usage:
 
 Options:
     -h|--help\t\t Display help
-
-Syntax:
-    variable\t\t [letter][letter|digit|_]*
-    term\t\t {variable}|{abstraction}|{application}|({term})
-    application\t\t {term} {term}
-    abstraction\t\t \\{variables}.{term}
-    definition\t\t let {variable} = {term}
-
-Examples:
-    let S = \\x y z.x z (y z)
-    let K = \\x y.x
-    S K K
-"
+"   Interpreter.PrintHelp ()
 
 /// Print a pointer indicating the start of input when running the interactive interpreter.
 let printInputPointer () =
@@ -68,20 +58,22 @@ if Array.contains "-h" args || Array.contains "--help" args then
 
 let interpreter =
     try
-        if args.Length = 2 then new Interpreter (args.[1])
-        else new Interpreter ()
+        if args.Length = 2 then Interpreter.StartOnFile (args[1])
+        else Interpreter.StartInteractive ()
     with
         | :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
             printMessage ConsoleColor.Red (ex.Message + "\n")
             exit <| int ExitCode.FileNotFound
 
-using interpreter (fun interpreter ->
+async {
+    use interpreter = interpreter
     let colorScheme = getColorScheme interpreter
-    if interpreter.IsInteractive then printInfo () ; printInputPointer ()
+    if interpreter.IsInteractive then printHeader () ; printInputPointer ()
 
-    for output in interpreter.RunToEnd () do
+    for nextLine in interpreter.RunToEnd () do
+        let! output = nextLine
         handleOutput colorScheme output
         if interpreter.IsInteractive then printInputPointer ()
 
     getExitCode interpreter |> int |> exit
-)
+} |> Async.RunSynchronously
