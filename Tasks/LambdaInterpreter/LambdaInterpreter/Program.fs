@@ -29,7 +29,7 @@ Usage:
     LambdaInterpreter {path-to-file}\t Run interpreter on the given source file
 
 Options:
-    -h|--help\t\t Display help
+    -h|--help\t\t Display help and exit
 "   Interpreter.PrintHelp ()
 
 /// Print a pointer indicating the start of input when running the interactive interpreter.

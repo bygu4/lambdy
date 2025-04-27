@@ -55,6 +55,7 @@ let testParser_Variable () =
         "let", variable, None;
         "letvar", variable, Some 6;
         "not_a_let", variable, Some 9;
+        "exit", variable, None;
     ] |> runTest
 
 [<Test>]
@@ -144,6 +145,8 @@ let testParser_Declaration () =
         "foo", declaration, None;
         "bar ololo", declaration, None;
         "let let", declaration, None;
+        "let help", declaration, None;
+        "let exitCode", declaration, Some 12;
     ] |> runTest
 
 [<Test>]
@@ -159,19 +162,39 @@ let testParser_Definition () =
         "let v1    =   v2", definition, Some 16;
         "let term = ", definition, None;
         "let let = X Y Z", definition, None;
+        "let clear = I x x", definition, None;
+    ] |> runTest
+
+[<Test>]
+let testParser_Command () =
+    [
+        "clear", command, Some 5;
+        "help", command, Some 4;
+        "exit", command, Some 4;
+        "not_help", command, None;
+        "exitCode", command, Some 4;
+        "   clear", command, None;
+        "exit  \t  ", command, Some 4;
     ] |> runTest
 
 [<Test>]
 let testParser_Expression () =
     [
         "let S = \\x y z.x z (y z)\n", expression, Some 25;
-        "let K = \\x y.x", expression, Some 14;
+        "let K  = \\x y.x", expression, Some 15;
         "S K K \t\n", expression, Some 8;
+        "let  tmp = (\\x  y z.some ( \\k.y z) x ) var", expression, Some 42;
         "\n", expression, Some 1;
         "       \n", expression, Some 8;
+        "  let I = \\x.x", expression, None;
         "_wewq", expression, None;
         "123\n", expression, None;
         "", expression, Some 0;
         "variable", expression, Some 8;
         "let test = (\\x.x) y,  ", expression, None;
+        "help  \t", expression, Some 7;
+        "clear vars", expression, None;
+        "let ololo_exit = (\\x.\\y.x ) z\n", expression, Some 30;
+        "a clear", expression, None;
+        "\n  exit", expression, None;
     ] |> runTest
