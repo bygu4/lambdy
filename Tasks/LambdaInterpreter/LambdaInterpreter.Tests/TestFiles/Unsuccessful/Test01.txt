@@ -1,0 +1,13 @@
+\x y z u v
+a1 b2 c3.a1
+\   .x y
+\.Z
+
+let = ololo
+let var = 
+let
+
+tmp = X Y
+let U V = W
+
+res

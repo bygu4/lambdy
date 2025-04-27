@@ -1,0 +1,8 @@
+let fst = \x y.x
+let    snd  = \fst.\snd.snd
+let res = (snd a fst) ololo
+res
+reset
+
+snd
+res

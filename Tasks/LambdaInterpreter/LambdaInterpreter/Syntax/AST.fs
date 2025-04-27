@@ -65,7 +65,7 @@ module AST =
             | Variable (Name var) -> var
             | Application (left, right) ->
                 let left = $"{toStringInternal left left.IsAbstraction}"
-                let right = $"{toStringInternal right right.IsApplication}"
+                let right = $"{toStringInternal right (right.IsAbstraction || right.IsApplication)}"
                 let term = $"{left} {right}"
                 if withBrackets then $"({term})" else term
             | Abstraction (Name var, term) ->

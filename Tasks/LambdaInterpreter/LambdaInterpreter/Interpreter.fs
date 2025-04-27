@@ -37,6 +37,10 @@ Commands:
     {ExitKeyword}\t\t Stop the execution and exit
 "
 
+    /// Print a pointer indicating the start of input when running the interactive interpreter.
+    static member PrintInputPointer () =
+        printf "-> "
+
     /// Create an interactive interpreter for the standard console input.
     static member StartInteractive (): Interpreter =
         new Interpreter (Console.OpenStandardInput (), true)
@@ -45,11 +49,12 @@ Commands:
     static member StartOnFile (path: string): Interpreter =
         new Interpreter (File.OpenRead path, false)
 
-    /// Whether the interpreter is interactive.
+    /// Whether the interpreter is being run in console.
     member _.IsInteractive: bool = interactive
 
-    /// Whether the end of stream was reached by the interpreter.
-    member _.EndOfStream: bool = reader.EndOfStream
+    /// Whether the current state of the interpreter supports running.
+    member _.CanRun: bool = if interactive then stream.CanRead
+                            else stream.CanRead && not reader.EndOfStream
 
     /// Whether a syntax error occurred during the interpretation.
     member _.SyntaxError: bool = error
@@ -78,6 +83,7 @@ Commands:
             | Command command -> runCommand command
             | Empty -> Result.Ok String.Empty
 
+        if interactive then Interpreter.PrintInputPointer ()
         async {
             let! line = reader.ReadLineAsync () |> Async.AwaitTask
             let parserResult = line |> run expression
@@ -89,11 +95,10 @@ Commands:
                     Result.Error msg
         }
 
-    /// Run the interpreter until the end of stream.
-    /// Yield interpretation result for each of the lines.
+    /// Run the interpreter while possible and yield result for each of the lines.
     member self.RunToEnd (): Async<Result<string, string>> seq =
         seq {
-            while stream.CanRead do
+            while self.CanRun do
                 yield self.RunOnNextLineAsync ()
         }
 

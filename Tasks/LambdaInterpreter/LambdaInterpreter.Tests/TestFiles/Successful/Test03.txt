@@ -1,0 +1,10 @@
+let foo = \A  B C.B C  (\x.x A ) 
+let td = \a1 a2 a3.a3                        
+
+let a1 = first
+let a2 = second
+let a3 = third
+foo a1 a2 a3
+
+let bar = td foo a1 a2 a3
+bar

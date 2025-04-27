@@ -32,10 +32,6 @@ Options:
     -h|--help\t\t Display help and exit
 "   Interpreter.PrintHelp ()
 
-/// Print a pointer indicating the start of input when running the interactive interpreter.
-let printInputPointer () =
-    printf "-> "
-
 /// Print the given `message` to the standard output with the given `color`.
 let printMessage (color: ConsoleColor) (message: string) =
     Console.ForegroundColor <- color
@@ -71,7 +67,6 @@ async {
     if interpreter.IsInteractive then printHeader ()
 
     for nextLine in interpreter.RunToEnd () do
-        if interpreter.IsInteractive then printInputPointer ()
         let! output = nextLine
         handleOutput colorScheme output
 

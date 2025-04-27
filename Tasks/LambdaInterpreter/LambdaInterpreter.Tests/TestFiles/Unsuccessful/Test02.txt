@@ -1,0 +1,11 @@
+let let = a
+let reset = B
+let help = Q
+let clear = P
+let exit = ololo
+
+\x y.\z.y  (exit z)
+a help
+test let
+clear ( a b c)
+exit ooo

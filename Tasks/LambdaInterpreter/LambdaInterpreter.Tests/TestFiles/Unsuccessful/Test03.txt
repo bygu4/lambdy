@@ -1,0 +1,15 @@
+     let x = y
+  A1 B2 C3
+
+_a
+42_
+some^var
+*ololo
+let err = (\x.x 123)
+let J = U V _W
+
+let qwerty = ()
+            exit
+((var)
+(a)()(b)(c)
+(test))))

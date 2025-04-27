@@ -132,6 +132,7 @@ let testParser_Term () =
         "\\x.\\y", term, None;
         "_q", term, None;
         "a, b, c", term, Some 1;
+        "\\X Y  Z.Z \\t.X Y", term, Some 9;
     ] |> runTest
 
 [<Test>]
@@ -199,4 +200,5 @@ let testParser_Expression () =
         "let ololo_exit = (\\x.\\y.x ) z\n", expression, Some 30;
         "a clear", expression, None;
         "\n  exit", expression, None;
+        "let var  = \\x.x \\y.y", expression, None;
     ] |> runTest

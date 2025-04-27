@@ -1,0 +1,7 @@
+let I = \x.x
+I a
+
+exit
+
+( a b) c d
+I

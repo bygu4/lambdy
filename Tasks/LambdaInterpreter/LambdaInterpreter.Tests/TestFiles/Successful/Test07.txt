@@ -1,0 +1,11 @@
+help
+clear
+var
+reset
+\x.x
+
+exitCode
+helpMe
+toClear
+reset_vars
+no_exit_1
