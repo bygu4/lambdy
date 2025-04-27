@@ -66,10 +66,11 @@ let testParser_Variables () =
         "X Y Z", variables, Some 5;
         "x1 x2 x3 x4", variables, Some 11;
         "v_1     v_2 x_3", variables, Some 15;
-        "a _ b", variables, None;
+        "a _ b", variables, Some 2;
         "1 2", variables, None;
-        "  ololo ololo  ", variables, None;
+        "  ololo ololo  ", variables, Some 15;
         "first, second", variables, Some 5;
+        "fst   snd thd   \t\n", variables, Some 18;
     ] |> runTest
 
 [<Test>]
@@ -117,6 +118,8 @@ let testParser_Abstraction () =
         "\\x.\\y.\\z.x", abstraction, Some 10;
         "\\first second.\\var.first second", abstraction, Some 31;
         "\\x y z.x y z", abstraction, Some 12;
+        "\\ A   B C. \t B (C A)", abstraction, Some 20;
+        "\\   u v  .  \\x. x v", abstraction, Some 19;
     ] |> runTest
 
 [<Test>]
@@ -133,6 +136,7 @@ let testParser_Term () =
         "_q", term, None;
         "a, b, c", term, Some 1;
         "\\X Y  Z.Z \\t.X Y", term, Some 9;
+        "(  \\ a b  . z)", term, Some 14;
     ] |> runTest
 
 [<Test>]

@@ -41,8 +41,8 @@ module Parser =
     /// Accept the variable name.
     let variable: Parser<Variable, unit> = regex VariablePattern >> exceptKeyword |>> Name
 
-    /// Accept one or more of variable names.
-    let variables = sepBy1 variable whitespace
+    /// Accept one or more of variable names, separated and optionally surrounded by whitespace.
+    let variables = (?<)(sepEndBy1 variable whitespace)
 
     /// Accept a primary lambda term representation.
     let term, termRef = createParserForwardedToRef ()
@@ -60,7 +60,7 @@ module Parser =
         <|> preturn ApplicationOpt.Epsilon
 
     /// Accept a lambda abstraction.
-    let abstraction = between (pchar '\\') (pchar '.') variables .>>. term |>> Abstraction
+    let abstraction = between (pchar '\\') (pchar '.') variables .>>. (?<)term |>> Abstraction
 
     /// Accept a lambda term application or a single operand.
     let application = operand .>>. applicationOpt |>> Application
