@@ -68,12 +68,12 @@ let interpreter =
 async {
     use interpreter = interpreter
     let colorScheme = getColorScheme interpreter
-    if interpreter.IsInteractive then printHeader () ; printInputPointer ()
+    if interpreter.IsInteractive then printHeader ()
 
     for nextLine in interpreter.RunToEnd () do
+        if interpreter.IsInteractive then printInputPointer ()
         let! output = nextLine
         handleOutput colorScheme output
-        if interpreter.IsInteractive then printInputPointer ()
 
     getExitCode interpreter |> int |> exit
 } |> Async.RunSynchronously
