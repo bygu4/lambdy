@@ -19,6 +19,7 @@ let e = String.Empty
 let successfulCasesResults: Result<string, string> list list = [
     [   // Test 1
         Ok "\\z.z";
+        Ok "trololo";
     ];
     [   // Test 2
         Ok "ololo";

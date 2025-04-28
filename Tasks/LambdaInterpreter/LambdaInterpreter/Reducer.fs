@@ -16,7 +16,7 @@ type LogRecord =
 /// Use `verbose` option to print logs to the console.
 type Reducer (?verbose: bool) =
     let verbose = defaultArg verbose false
-    let mutable variables = new Map<Variable, LambdaTerm> ([])
+    let mutable variables: (Variable * LambdaTerm) list = []
 
     /// Print a log message from the given `record` according to verbosity.
     let log record =
@@ -69,9 +69,9 @@ type Reducer (?verbose: bool) =
             Application (substitute left (Name var) sub, substitute right (Name var) sub)
 
     /// Substitute variables in `term` according to the `subs` mapping.
-    let substituteMany term (subs: Map<Variable, LambdaTerm>) =
+    let substituteMany term subs =
         subs
-        |> Seq.fold (fun acc pair -> substitute acc pair.Key pair.Value) term
+        |> Seq.fold (fun acc (var, sub) -> substitute acc var sub) term
 
     /// Perform beta-reduction of the given lambda `term`.
     /// Perform alpha-conversion if necessary.
@@ -95,12 +95,12 @@ type Reducer (?verbose: bool) =
     /// Define a `var` to be substituted with the given `term`.
     member _.AddDefinition (var: Variable, term: LambdaTerm) =
         log <| AddingDefinition (var, term)
-        variables <- variables.Add (var, substituteMany term variables)
+        variables <- (var, term) :: variables
 
     /// Reset defined variables.
     member _.Reset () =
         log <| Resetting
-        variables <- new Map<Variable, LambdaTerm> ([])
+        variables <- []
 
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.
