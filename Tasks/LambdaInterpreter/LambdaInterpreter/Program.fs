@@ -10,7 +10,7 @@ let printHeader () =
     printfn "
 Lambda Interpreter
 ------------------
-A simple interpreter of lambda term expressions.
+An interactive lambda term interpreter.
 
 Type 'help' for more info.
 "
@@ -20,11 +20,11 @@ let printHelp () =
     printfn $"
 Lambda Interpreter
 ------------------
-A simple interpreter of lambda term expressions.
+An interactive lambda term interpreter.
 It can either be run interactively using the standard input,
 or on a specified source file.
 
-Usage: LambdaInterpreter {{path-to-file?}} [options]
+Usage: LambdaInterpreter [path-to-file] [options]
 
 Options:
     {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
