@@ -1,0 +1,15 @@
+let fst = \ x y . x
+let I = \ x. x
+I fst
+(fst)
+
+let foo = fst I ololo
+
+()
+
+foo bar
+
+clear
+reset
+
+foo bar

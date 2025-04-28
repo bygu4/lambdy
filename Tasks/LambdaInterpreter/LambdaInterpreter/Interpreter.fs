@@ -7,13 +7,12 @@ open FParsec
 open Keywords
 open AST
 open Parser
-open Reduction
 
 /// Class representing the lambda term interpreter.
-type Interpreter private (stream: Stream, interactive: bool) =
+type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool) =
     let reader = new StreamReader (stream)
-    let mutable vars = new Map<Variable, LambdaTerm> ([])
-    let mutable error = false
+    let reducer = new Reducer (?verbose=verbose)
+    let mutable syntaxError = false
 
     /// Print help info to the standard output.
     static member PrintHelp () = printfn $"
@@ -42,12 +41,12 @@ Commands:
         printf "-> "
 
     /// Create an interactive interpreter for the standard console input.
-    static member StartInteractive (): Interpreter =
-        new Interpreter (Console.OpenStandardInput (), true)
+    static member StartInteractive (?verbose: bool): Interpreter =
+        new Interpreter (Console.OpenStandardInput (), true, ?verbose=verbose)
 
-    /// Create an interpreter to run on source file at the given `path`.
-    static member StartOnFile (path: string): Interpreter =
-        new Interpreter (File.OpenRead path, false)
+    /// Create an interpreter to run on a source file at the given `path`.
+    static member StartOnFile (path: string, ?verbose: bool): Interpreter =
+        new Interpreter (File.OpenRead path, false, ?verbose=verbose)
 
     /// Whether the interpreter is being run in console.
     member _.IsInteractive: bool = interactive
@@ -57,49 +56,50 @@ Commands:
                             else stream.CanRead && not reader.EndOfStream
 
     /// Whether a syntax error occurred during the interpretation.
-    member _.SyntaxError: bool = error
+    member _.SyntaxError: bool = syntaxError
+
+    /// Run the interpreter while possible and yield the interpretation results.
+    member self.RunToEnd (): Result<string, string> seq =
+        seq {
+            while self.CanRun do
+                let result = self.RunOnNextLineAsync () |> Async.RunSynchronously
+                match result with
+                | Some output -> yield output
+                | None -> ()
+        }
 
     /// Analyze the next line in the stream and get the interpretation result.
-    member _.RunOnNextLineAsync (): Async<Result<string, string>> =
+    member private _.RunOnNextLineAsync (): Async<Result<string, string> option> =
 
         /// Execute the given special interpreter `command`.
         let runCommand (command: SpecialCommand) =
             match command with
-            | Reset -> vars <- new Map<Variable, LambdaTerm> ([])
+            | Reset -> reducer.Reset ()
             | Help -> if interactive then Interpreter.PrintHelp ()
             | Clear -> if interactive then Console.Clear ()
             | Exit -> reader.Close ()
-            Result.Ok String.Empty
+            None
 
         /// Interpret the given `primary` expression representation.
         let interpretExpression (primary: Primary.Expression) =
             match buildAST_Expression primary with
             | Definition (var, term) ->
-                vars <- vars.Add (var, substituteMany term vars)
-                Result.Ok String.Empty
-            | Result term ->
-                let result = substituteMany term vars |> reduce |> toString
-                Result.Ok result
+                reducer.AddDefinition (var, term)
+                None
+            | Result term -> reducer.Reduce term |> toString |> Result.Ok |> Some
             | Command command -> runCommand command
-            | Empty -> Result.Ok String.Empty
+            | Empty -> None
 
-        if interactive then Interpreter.PrintInputPointer ()
         async {
+            if interactive then Interpreter.PrintInputPointer ()
             let! line = reader.ReadLineAsync () |> Async.AwaitTask
             let parserResult = line |> run expression
             return
                 match parserResult with
                 | Success (expr, _, _) -> interpretExpression expr
                 | Failure (msg, _, _) ->
-                    error <- true
-                    Result.Error msg
-        }
-
-    /// Run the interpreter while possible and yield result for each of the lines.
-    member self.RunToEnd (): Async<Result<string, string>> seq =
-        seq {
-            while self.CanRun do
-                yield self.RunOnNextLineAsync ()
+                    syntaxError <- true
+                    msg |> Result.Error |> Some
         }
 
     interface IDisposable with

@@ -41,10 +41,8 @@ let printMessage (color: ConsoleColor) (message: string) =
 /// Print the result of interpretation according to the given `output` using the given color `scheme`.
 let handleOutput (Color success, Color error) (output: Result<string, string>) =
     match output with
-    | Ok result ->
-        if result.Length > 0 then printMessage success (result + "\n")
-    | Error message ->
-        printMessage error message
+    | Ok result -> printMessage success (result + "\n")
+    | Error message -> printMessage error message
 
 let args = Environment.GetCommandLineArgs ()
 
@@ -61,14 +59,12 @@ let interpreter =
             printMessage ConsoleColor.Red (ex.Message + "\n")
             exit <| int ExitCode.FileNotFound
 
-async {
-    use interpreter = interpreter
+using interpreter (fun interpreter ->
     let colorScheme = getColorScheme interpreter
     if interpreter.IsInteractive then printHeader ()
 
-    for nextLine in interpreter.RunToEnd () do
-        let! output = nextLine
+    for output in interpreter.RunToEnd () do
         handleOutput colorScheme output
 
     getExitCode interpreter |> int |> exit
-} |> Async.RunSynchronously
+)

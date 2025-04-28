@@ -2,10 +2,12 @@
 
 open AST
 
-/// Module dealing with lambda term reduction.
-module Reduction =
+/// Class performing lambda term reduction.
+type Reducer (?verbose: bool) =
+    let verbose = defaultArg verbose false
+    let mutable variables = new Map<Variable, LambdaTerm> ([])
 
-    /// Gets free variables of the given lambda `term`.
+    /// Get free variables of the given lambda `term`.
     let rec freeVars term =
         match term with
         | Variable (Name v) -> set [v]
@@ -13,13 +15,13 @@ module Reduction =
         | Application (left, right) -> 
             Set.union (freeVars left) (freeVars right)
 
-    /// Gets a variable, starting with `prefix`, that is not in `freeVars`.
+    /// Get a variable, starting with `prefix`, that is not in `freeVars`.
     let rec nextFreeVar prefix freeVars =
         if not (Set.contains prefix freeVars) then prefix
         else nextFreeVar (prefix + "'") freeVars
 
-    /// Substitutes free occurrences of variable `var` in `term` with given term `sub`.
-    /// Performs alpha-conversion if necessary.
+    /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
+    /// Perform alpha-conversion if necessary.
     let rec substitute term (Name var) sub =
         match term with
         | Variable (Name x) when x = var -> sub
@@ -36,13 +38,13 @@ module Reduction =
         | Application (left, right) ->
             Application (substitute left (Name var) sub, substitute right (Name var) sub)
 
-    /// Substitutes variables in `term` according to the `subs` mapping.
+    /// Substitute variables in `term` according to the `subs` mapping.
     let substituteMany term (subs: Map<Variable, LambdaTerm>) =
         subs
         |> Seq.fold (fun acc pair -> substitute acc pair.Key pair.Value) term
 
-    /// Performs beta-reduction of the given lambda `term`.
-    /// Performs alpha-conversion if necessary.
+    /// Perform beta-reduction of the given lambda `term`.
+    /// Perform alpha-conversion if necessary.
     let rec reduce term =
         match term with
         | Variable _ as var -> var
@@ -57,3 +59,16 @@ module Reduction =
             match left with
             | Abstraction _ -> reduce (Application (left, right))
             | _ -> Application (left, right)
+
+    /// Define a `var` to be substituted with the given `term`.
+    member _.AddDefinition (var: Variable, term: LambdaTerm) =
+        variables <- variables.Add (var, substituteMany term variables)
+
+    /// Reset defined variables.
+    member _.Reset () =
+        variables <- new Map<Variable, LambdaTerm> ([])
+
+    /// Perform beta-reduction of the given lambda `term` according to defined variables.
+    /// Perform alpha-conversion if necessary.
+    member _.Reduce (term: LambdaTerm): LambdaTerm =
+        variables |> substituteMany term |> reduce

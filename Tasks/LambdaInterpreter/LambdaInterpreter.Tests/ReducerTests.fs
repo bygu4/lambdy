@@ -5,7 +5,6 @@ open FsUnit
 
 open LambdaInterpreter
 open AST
-open Reduction
 
 let id var = Abstraction (var, Variable var)
 let omega var = Abstraction (var, Application (Variable var, Variable var))
@@ -111,4 +110,5 @@ let testCases = List.zip terms reducedTerms |> List.map TestCaseData
 
 [<TestCaseSource(nameof(testCases))>]
 let testReduce term reducedTerm =
-    reduce term |> should equal reducedTerm
+    let reducer = new Reducer ()
+    reducer.Reduce term |> should equal reducedTerm

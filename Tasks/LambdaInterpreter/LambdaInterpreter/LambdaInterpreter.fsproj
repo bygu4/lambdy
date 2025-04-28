@@ -11,7 +11,7 @@
     <Compile Include="Syntax/Primary.fs" />
     <Compile Include="Syntax/AST.fs" />
     <Compile Include="Syntax/Parser.fs" />
-    <Compile Include="Reduction.fs" />
+    <Compile Include="Reducer.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="Console/ColorScheme.fs" />
     <Compile Include="Console/ExitCode.fs" />

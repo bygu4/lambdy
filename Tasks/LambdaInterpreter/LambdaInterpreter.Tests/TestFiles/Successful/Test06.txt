@@ -1,5 +1,10 @@
 let I = \x.x
 I a
+let foo = \ a b . b (I a)
+foo
+
+let temp = foo bar baz
+temp
 
 exit
 

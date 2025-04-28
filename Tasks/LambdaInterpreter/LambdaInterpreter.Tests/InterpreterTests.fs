@@ -18,73 +18,47 @@ let e = String.Empty
 
 let successfulCasesResults: Result<string, string> list list = [
     [   // Test 1
-        Ok e;
-        Ok e;
         Ok "\\z.z";
     ];
     [   // Test 2
-        Ok e;
-        Ok e;
-        Ok e;
         Ok "ololo";
-        Ok e;
-        Ok e;
         Ok "a";
-        Ok e;
         Ok "\\V1.\\V2.V2 (\\x.V2 x)";
         Ok "\\x.\\y.\\x.x";
-        Ok e;
     ];
     [   // Test 3
-        Ok e;
-        Ok e;
-        Ok e;
-        Ok e;
-        Ok e;
-        Ok e;
+        Ok "qwerty";
+        Ok "ololo (A_ B_)";
+        Ok "\\x.\\y.z (\\x.y x)";
+        Ok "Mult (Sum (\\P.P))";
         Ok "second third (\\x.x first)";
-        Ok e;
-        Ok e;
-        Ok "second third"
-        Ok e;
+        Ok "second third";
     ];
     [   // Test 4
         Ok "x y";
-        Ok e;
-        Ok e;
         Ok "x";
-        Ok e;
         Ok "\\y'.y y'";
     ];
     [   // Test 5
-        Ok e;
-        Ok e;
-        Ok e;
         Ok "\\y.ololo";
-        Ok e;
-        Ok e;
         Ok "snd";
         Ok "res";
     ];
     [   // Test 6
-        Ok e;
         Ok "a";
-        Ok e;
-        Ok e;
+        Ok "\\a.\\b.b a";
+        Ok "baz bar";
     ];
     [   // Test 7
-        Ok e;
-        Ok e;
         Ok "var";
-        Ok e;
         Ok "\\x.x";
-        Ok e;
         Ok "exitCode";
         Ok "helpMe";
         Ok "toClear";
         Ok "reset_vars";
         Ok "no_exit_1";
-        Ok e;
+    ];
+    [   // Test 8
     ];
 ]
 
@@ -94,14 +68,11 @@ let unsuccessfulCasesResults: Result<string, string> list list = [
         Error e;
         Error e;
         Error e;
-        Ok e;
         Error e;
         Error e;
         Error e;
-        Ok e;
         Error e;
         Error e;
-        Ok e;
         Ok "res";
     ];
     [   // Test 2
@@ -110,31 +81,33 @@ let unsuccessfulCasesResults: Result<string, string> list list = [
         Error e;
         Error e;
         Error e;
-        Ok e;
         Error e;
         Error e;
         Error e;
         Error e;
         Error e;
-        Ok e;
     ];
     [   // Test 3
         Error e;
         Error e;
-        Ok e;
         Error e;
         Error e;
         Error e;
         Error e;
         Error e;
         Error e;
-        Ok e;
         Error e;
         Error e;
         Error e;
         Error e;
         Error e;
-        Ok e;
+    ];
+    [   // Test 4
+        Ok "\\x.\\y.x";
+        Ok "\\x.\\y.x";
+        Error "e";
+        Ok "bar";
+        Ok "foo bar";
     ];
 ]
 
@@ -150,12 +123,8 @@ let unsuccessfulCases =
 
 let testCases = Seq.append successfulCases unsuccessfulCases |> Seq.map TestCaseData
 
-let getOutput (interpreter: Interpreter) =
-    interpreter.RunToEnd ()
-    |> Seq.map Async.RunSynchronously
-    |> Seq.toList
-
 let outputsMatch (actual: Result<string, string> list) (expected: Result<string, string> list) =
+    actual.Length = expected.Length &&
     Seq.zip actual expected
     |> Seq.map (function
         | Ok res1, Ok res2 -> res1 = res2
@@ -166,6 +135,6 @@ let outputsMatch (actual: Result<string, string> list) (expected: Result<string,
 [<TestCaseSourceAttribute(nameof(testCases))>]
 let testInterpreter (sourceFile: string, expectedOutput: Result<string, string> list, shouldFail: bool) =
     let interpreter = Interpreter.StartOnFile sourceFile
-    let output = getOutput interpreter
+    let output = interpreter.RunToEnd () |> Seq.toList
     output |> outputsMatch expectedOutput |> should be True
     interpreter.SyntaxError |> should equal shouldFail
