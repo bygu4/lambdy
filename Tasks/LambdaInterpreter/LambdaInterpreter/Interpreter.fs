@@ -9,10 +9,21 @@ open AST
 open Parser
 
 /// Class representing the lambda term interpreter.
-type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool) =
+type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?lineNumber: bool) =
     let reader = new StreamReader (stream)
     let reducer = new Reducer (?verbose=verbose)
+    let lineNumber = defaultArg lineNumber false
+
+    let mutable currentLine = 0
     let mutable syntaxError = false
+
+    /// Print a pointer indicating the start of input when running an interactive interpreter.
+    let tryPrintInputPointer () =
+        if interactive then printf ">>> "
+
+    /// Add current line number to the given string when running on a source file.
+    let tryAddCurrentLine str =
+        if lineNumber then $"[Line {currentLine}] {str}" else str
 
     /// Print help info to the standard output.
     static member PrintHelp () = printfn $"
@@ -36,10 +47,6 @@ Commands:
     {ExitKeyword}\t\t Stop the execution and exit
 "
 
-    /// Print a pointer indicating the start of input when running the interactive interpreter.
-    static member PrintInputPointer () =
-        printf ">>> "
-
     /// Create an interactive interpreter for the standard console input.
     /// Use `verbose` option to print logs to the console.
     static member StartInteractive (?verbose: bool): Interpreter =
@@ -47,8 +54,9 @@ Commands:
 
     /// Create an interpreter to run on a source file at the given `path`.
     /// Use `verbose` option to print logs to the console.
-    static member StartOnFile (path: string, ?verbose: bool): Interpreter =
-        new Interpreter (File.OpenRead path, false, ?verbose=verbose)
+    /// Use `lineNumber` option to add line number to the output.
+    static member StartOnFile (path: string, ?verbose: bool, ?lineNumber: bool): Interpreter =
+        new Interpreter (File.OpenRead path, false, ?verbose=verbose, ?lineNumber=lineNumber)
 
     /// Whether the interpreter is being run in console.
     member _.IsInteractive: bool = interactive
@@ -88,12 +96,18 @@ Commands:
             | Definition (var, term) ->
                 reducer.AddDefinition (var, term)
                 None
-            | Result term -> reducer.Reduce term |> toString |> Result.Ok |> Some
+            | Result term ->
+                reducer.Reduce term
+                |> toString
+                |> tryAddCurrentLine
+                |> Result.Ok
+                |> Some
             | Command command -> runCommand command
             | Empty -> None
 
         async {
-            if interactive then Interpreter.PrintInputPointer ()
+            currentLine <- currentLine + 1
+            tryPrintInputPointer ()
             let! line = reader.ReadLineAsync () |> Async.AwaitTask
             let parserResult = line |> run expression
             return
@@ -101,7 +115,7 @@ Commands:
                 | Success (expr, _, _) -> interpretExpression expr
                 | Failure (msg, _, _) ->
                     syntaxError <- true
-                    msg |> Result.Error |> Some
+                    msg |> tryAddCurrentLine |> Result.Error |> Some
         }
 
     interface IDisposable with

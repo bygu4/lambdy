@@ -68,7 +68,7 @@ type Reducer (?verbose: bool) =
         | Application (left, right) ->
             Application (substitute left (Name var) sub, substitute right (Name var) sub)
 
-    /// Substitute variables in `term` according to the `subs` mapping.
+    /// Substitute variables in `term` according to the given `subs` pair sequence.
     let substituteMany term subs =
         subs
         |> Seq.fold (fun acc (var, sub) -> substitute acc var sub) term

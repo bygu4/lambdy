@@ -28,7 +28,8 @@ Usage: LambdaInterpreter {{path-to-file?}} [options]
 
 Options:
     {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
-    {String.Join ('|', Options.VerboseArgs)}\t Use detailed output"
+    {String.Join ('|', Options.VerboseArgs)}\t Use detailed output
+    {String.Join ('|', Options.LineNumberArgs)}\t Print line number with output"
     Interpreter.PrintHelp ()
 
 /// Message to print when failed to interpret the given command line args.
@@ -59,7 +60,7 @@ if options.Error then
 let interpreter =
     match options.SourceFile with
     | Some path ->
-        try Interpreter.StartOnFile (path, options.Verbose)
+        try Interpreter.StartOnFile (path, options.Verbose, options.LineNumber)
         with :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
             printMessage ConsoleColor.Red ex.Message
             exit <| int ExitCode.FileNotFound
