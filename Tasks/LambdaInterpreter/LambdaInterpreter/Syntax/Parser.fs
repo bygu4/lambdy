@@ -34,7 +34,7 @@ module Parser =
         if reply.Status = ReplyStatus.Ok && isKeyword reply.Result then
             Reply (
                 ReplyStatus.Error,
-                ErrorMessage.Unexpected $"\"{reply.Result}\" is reserved as a keyword" |> ErrorMessageList
+                ErrorMessage.Unexpected $"'{reply.Result}' is reserved as a keyword" |> ErrorMessageList
             )
         else reply
 

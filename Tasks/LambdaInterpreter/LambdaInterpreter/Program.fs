@@ -17,20 +17,22 @@ Type 'help' for more info.
 
 /// Print command line help.
 let printHelp () =
-    printfn "
+    printfn $"
 Lambda Interpreter
 ------------------
 A simple interpreter of lambda term expressions.
 It can either be run interactively using the standard input,
 or on a specified source file.
 
-Usage:
-    LambdaInterpreter [options]\t\t Run interpreter interactively
-    LambdaInterpreter {path-to-file}\t Run interpreter on the given source file
+Usage: LambdaInterpreter {{path-to-file?}} [options]
 
 Options:
-    -h|--help\t\t Display help and exit
-"   Interpreter.PrintHelp ()
+    {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
+    {String.Join ('|', Options.VerboseArgs)}\t Use detailed output"
+    Interpreter.PrintHelp ()
+
+/// Message to print when failed to interpret the given command line args.
+let invalidArgsMessage = "Invalid command line arguments provided. For more info use '--help' option."
 
 /// Print the given `message` to the standard output with the given `color`.
 let printMessage (color: ConsoleColor) (message: string) =
@@ -44,20 +46,24 @@ let handleOutput (Color success, Color error) (output: Result<string, string>) =
     | Ok result -> printMessage success (result + "\n")
     | Error message -> printMessage error message
 
-let args = Environment.GetCommandLineArgs ()
+let options = Options.GetFromArgs ()
 
-if Array.contains "-h" args || Array.contains "--help" args then
+if options.Help then
     printHelp ()
     exit <| int ExitCode.Success
 
+if options.Error then
+    printMessage ConsoleColor.Red invalidArgsMessage
+    exit <| int ExitCode.BadArguments
+
 let interpreter =
-    try
-        if args.Length = 2 then Interpreter.StartOnFile (args[1], true)
-        else Interpreter.StartInteractive true
-    with
-        | :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
-            printMessage ConsoleColor.Red (ex.Message + "\n")
+    match options.SourceFile with
+    | Some path ->
+        try Interpreter.StartOnFile (path, options.Verbose)
+        with :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
+            printMessage ConsoleColor.Red ex.Message
             exit <| int ExitCode.FileNotFound
+    | None -> Interpreter.StartInteractive options.Verbose
 
 using interpreter (fun interpreter ->
     let colorScheme = getColorScheme interpreter

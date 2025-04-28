@@ -41,12 +41,12 @@ Commands:
         printf ">>> "
 
     /// Create an interactive interpreter for the standard console input.
-    /// Use `verbose` option for more detailed console output.
+    /// Use `verbose` option to print logs to the console.
     static member StartInteractive (?verbose: bool): Interpreter =
         new Interpreter (Console.OpenStandardInput (), true, ?verbose=verbose)
 
     /// Create an interpreter to run on a source file at the given `path`.
-    /// Use `verbose` option for more detailed console output.
+    /// Use `verbose` option to print logs to the console.
     static member StartOnFile (path: string, ?verbose: bool): Interpreter =
         new Interpreter (File.OpenRead path, false, ?verbose=verbose)
 
