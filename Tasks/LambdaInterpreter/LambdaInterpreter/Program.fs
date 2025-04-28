@@ -43,7 +43,7 @@ let printMessage (color: ConsoleColor) (message: string) =
 /// Print the result of interpretation according to the given `output` using the given color `scheme`.
 let handleOutput (Color success, Color error) (output: Result<string, string>) =
     match output with
-    | Ok result -> printMessage success (result + "\n")
+    | Ok result -> printMessage success result
     | Error message -> printMessage error message
 
 let options = Options.GetFromArgs ()

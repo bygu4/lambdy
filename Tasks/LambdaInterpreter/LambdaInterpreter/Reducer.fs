@@ -96,13 +96,11 @@ type Reducer (?verbose: bool) =
     member _.AddDefinition (var: Variable, term: LambdaTerm) =
         log <| AddingDefinition (var, term)
         variables <- variables.Add (var, substituteMany term variables)
-        if verbose then printf "\n"
 
     /// Reset defined variables.
     member _.Reset () =
         log <| Resetting
         variables <- new Map<Variable, LambdaTerm> ([])
-        if verbose then printf "\n"
 
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.
