@@ -24,9 +24,9 @@ Syntax:
     definition\t\t {DeclarationKeyword} {{variable}} = {{term}}
 
 Examples:
-    -> {DeclarationKeyword} S = \\x y z.x z (y z)
-    -> {DeclarationKeyword} K = \\x y.x
-    -> S K K
+    >>> {DeclarationKeyword} S = \\x y z.x z (y z)
+    >>> {DeclarationKeyword} K = \\x y.x
+    >>> S K K
     \\z.z
 
 Commands:
@@ -38,13 +38,15 @@ Commands:
 
     /// Print a pointer indicating the start of input when running the interactive interpreter.
     static member PrintInputPointer () =
-        printf "-> "
+        printf ">>> "
 
     /// Create an interactive interpreter for the standard console input.
+    /// Use `verbose` option for more detailed console output.
     static member StartInteractive (?verbose: bool): Interpreter =
         new Interpreter (Console.OpenStandardInput (), true, ?verbose=verbose)
 
     /// Create an interpreter to run on a source file at the given `path`.
+    /// Use `verbose` option for more detailed console output.
     static member StartOnFile (path: string, ?verbose: bool): Interpreter =
         new Interpreter (File.OpenRead path, false, ?verbose=verbose)
 

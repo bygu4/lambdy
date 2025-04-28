@@ -56,20 +56,23 @@ module AST =
         | Epsilon -> Empty
 
     /// Get a string representation of the given lambda `term`.
+    /// Add brackets if necessary for a proper operation priority.
+    let rec private toStringInternal (term: LambdaTerm) (withBrackets: bool) = 
+        match term with
+        | Variable (Name var) -> var
+        | Application (left, right) ->
+            let left = $"{toStringInternal left left.IsAbstraction}"
+            let right = $"{toStringInternal right (right.IsAbstraction || right.IsApplication)}"
+            let term = $"{left} {right}"
+            if withBrackets then $"({term})" else term
+        | Abstraction (Name var, term) ->
+            let term = $"\\{var}.{toStringInternal term false}"
+            if withBrackets then $"({term})" else term
+
+    /// Get a string representation of the given lambda `term`.
     let toString (term: LambdaTerm) =
-
-        /// Get a string representation of the given lambda `term`.
-        /// Add brackets if necessary for a proper operation priority.
-        let rec toStringInternal (term: LambdaTerm) (withBrackets: bool) = 
-            match term with
-            | Variable (Name var) -> var
-            | Application (left, right) ->
-                let left = $"{toStringInternal left left.IsAbstraction}"
-                let right = $"{toStringInternal right (right.IsAbstraction || right.IsApplication)}"
-                let term = $"{left} {right}"
-                if withBrackets then $"({term})" else term
-            | Abstraction (Name var, term) ->
-                let term = $"\\{var}.{toStringInternal term false}"
-                if withBrackets then $"({term})" else term
-
         toStringInternal term false
+
+    /// Get a string representation of the given lambda `term` and surround it with brackets if necessary.
+    let toStringWithBrackets (term: LambdaTerm) =
+        toStringInternal term true

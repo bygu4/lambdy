@@ -52,8 +52,8 @@ if Array.contains "-h" args || Array.contains "--help" args then
 
 let interpreter =
     try
-        if args.Length = 2 then Interpreter.StartOnFile (args[1])
-        else Interpreter.StartInteractive ()
+        if args.Length = 2 then Interpreter.StartOnFile (args[1], true)
+        else Interpreter.StartInteractive true
     with
         | :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
             printMessage ConsoleColor.Red (ex.Message + "\n")
