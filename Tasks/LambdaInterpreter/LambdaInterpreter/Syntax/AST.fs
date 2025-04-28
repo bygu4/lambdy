@@ -3,7 +3,7 @@ namespace LambdaInterpreter
 open System
 open Primary
 
-/// Module dealing with finalized syntax trees.
+/// Module dealing with finalized syntax trees of lambda expressions.
 module AST =
 
     /// Definition of the lambda term.

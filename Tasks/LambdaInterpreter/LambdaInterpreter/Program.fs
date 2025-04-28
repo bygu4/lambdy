@@ -2,17 +2,18 @@ open System
 open System.IO
 
 open LambdaInterpreter
+open Keywords
 open ColorScheme
 open ExitCode
 
 /// Print header with general info about the app and a help suggestion.
 let printHeader () =
-    printfn "
+    printfn $"
 Lambda Interpreter
 ------------------
 An interactive lambda term interpreter.
 
-Type 'help' for more info.
+Type '{HelpKeyword}' for more info.
 "
 
 /// Print command line help.
@@ -28,12 +29,13 @@ Usage: LambdaInterpreter [path-to-file] [options]
 
 Options:
     {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
-    {String.Join ('|', Options.VerboseArgs)}\t Use detailed output
+    {String.Join ('|', Options.VerboseArgs)}\t Print detailed interpretation info
     {String.Join ('|', Options.LineNumberArgs)}\t Print line number with output"
     Interpreter.PrintHelp ()
 
 /// Message to print when failed to interpret the given command line args.
-let invalidArgsMessage = "Invalid command line arguments provided. For more info use '--help' option."
+let invalidArgsMessage =
+    $"Invalid command line arguments provided. For more info use '{Array.last Options.HelpArgs}' option."
 
 /// Print the given `message` to the standard output with the given `color`.
 let printMessage (color: ConsoleColor) (message: string) =
@@ -61,7 +63,7 @@ let interpreter =
     match options.SourceFile with
     | Some path ->
         try Interpreter.StartOnFile (path, options.Verbose, options.LineNumber)
-        with :? FileNotFoundException | :? DirectoryNotFoundException as ex ->
+        with :? IOException | :? UnauthorizedAccessException as ex ->
             printMessage ConsoleColor.Red ex.Message
             exit <| int ExitCode.FileNotFound
     | None -> Interpreter.StartInteractive options.Verbose

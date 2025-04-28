@@ -11,7 +11,7 @@ module ColorScheme =
     /// Color of messages signaling of error.
     type ErrorColor = Color of ConsoleColor
 
-    /// Definition of the color scheme of the console application.
+    /// Color scheme of the console application.
     type ColorScheme = SuccessColor * ErrorColor
 
     /// Get the color scheme of the app according to the state of the given `interpreter`.

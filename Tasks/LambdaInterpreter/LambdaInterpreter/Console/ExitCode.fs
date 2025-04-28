@@ -14,7 +14,7 @@ module ExitCode =
         /// The given source file was not found.
         | FileNotFound = 2
 
-        /// An syntax error has occurred during source file interpretation.
+        /// A syntax error has occurred during source file interpretation.
         | SyntaxError = 3
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
