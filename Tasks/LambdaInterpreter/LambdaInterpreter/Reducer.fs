@@ -19,9 +19,9 @@ type Reducer (?verbose: bool) =
     let verbose = defaultArg verbose false
     let mutable variables: (Variable * LambdaTerm) list = []
 
-    /// Max allowed depth of the recursion.
+    /// Max allowed depth of recursion during the term reduction.
     [<Literal>]
-    let MaxRecursionDepth = 32000
+    let MaxRecursionDepth = 8192
 
     /// Message to fail with in case of stack overflow.
     [<Literal>]
