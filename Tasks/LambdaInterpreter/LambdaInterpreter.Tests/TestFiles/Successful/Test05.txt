@@ -6,3 +6,8 @@ reset
 
 snd
 res
+
+let baz = \ U V. V \x. U 
+baz     
+\left  right. left (\x.x) right  
+\ x y z . (\t.z) (\t.x) ((z y ) x)

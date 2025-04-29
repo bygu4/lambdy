@@ -6,7 +6,7 @@ open Primary
 /// Module dealing with finalized syntax trees of lambda expressions.
 module AST =
 
-    /// Definition of the lambda term.
+    /// The finalized lambda term representation.
     type LambdaTerm =
         | Variable of Variable
         | Abstraction of Variable * LambdaTerm
@@ -31,11 +31,12 @@ module AST =
         /// Build AST of lambda term application using term on the `left` and the rest on `right`.
         let rec buildAST_Application (left: LambdaTerm, right: Primary.ApplicationOpt) =
             match right with
-            | Apply (operand, rest) ->
+            | WithContinuation (operand, rest) ->
                 let right = buildAST_Operand operand
                 let partial = Application (left, right)
                 buildAST_Application (partial, rest)
-            | ApplicationOpt.Epsilon -> left
+            | FinalAbstraction abs -> Application (left, buildAST_Term abs)
+            | Epsilon -> left
 
         match primary with
         | Primary.Application (operand, rest) ->
@@ -53,16 +54,22 @@ module AST =
         | Primary.Definition (variable, term) -> Definition (variable, buildAST_Term term)
         | Primary.Result term -> Result (buildAST_Term term)
         | Primary.Command command -> Command command
-        | Epsilon -> Empty
+        | Primary.Empty -> Empty
 
     /// Get a string representation of the given lambda `term`.
     /// Add brackets if necessary for a proper operation priority.
     let rec private toStringInternal (term: LambdaTerm) (withBrackets: bool) = 
         match term with
         | Variable (Name var) -> var
+        | Application (Application (left, (Abstraction _ as abs)), right) ->
+            let left = toStringInternal left left.IsAbstraction
+            let abs = toStringInternal abs true
+            let right = toStringInternal right right.IsApplication
+            let term = $"{left} {abs} {right}"
+            if withBrackets then $"({term})" else term
         | Application (left, right) ->
-            let left = $"{toStringInternal left left.IsAbstraction}"
-            let right = $"{toStringInternal right (right.IsAbstraction || right.IsApplication)}"
+            let left = toStringInternal left left.IsAbstraction
+            let right = toStringInternal right right.IsApplication
             let term = $"{left} {right}"
             if withBrackets then $"({term})" else term
         | Abstraction (Name var, term) ->

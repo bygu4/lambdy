@@ -105,6 +105,8 @@ let testParser_Application () =
         "var (\\x.x z)", application, Some 12;
         "(  (\\A1 B2 C3.A1) ololo)  var1", application, Some 30;
         "var1  (var2)   var3  \t ", application, Some 19;
+        "( \\x.x )", application, Some 8;
+        "left \\x.right ", application, Some 13;
     ] |> runTest
 
 [<Test>]
@@ -136,8 +138,9 @@ let testParser_Term () =
         "\\x.\\y", term, None;
         "_q", term, None;
         "a, b, c", term, Some 1;
-        "\\X Y  Z.Z \\t.X Y", term, Some 9;
+        "\\X Y  Z.Z \\t.X Y", term, Some 16;
         "(  \\ a b  . z)", term, Some 14;
+        "\\U. U (\\x.x) V", term, Some 14;
     ] |> runTest
 
 [<Test>]
@@ -206,5 +209,6 @@ let testParser_Expression () =
         "let ololo_exit = (\\x.\\y.x ) z\n", expression, Some 30;
         "a clear", expression, None;
         "\n  exit", expression, None;
-        "let var  = \\x.x \\y.y", expression, None;
+        "let var  = \\x.x \\y.y", expression, Some 20;
+        "\\A B.A \\x.B  \t", expression, Some 14;
     ] |> runTest

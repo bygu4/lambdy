@@ -47,20 +47,25 @@ module Parser =
     /// Accept a primary lambda term representation.
     let term, termRef = createParserForwardedToRef ()
 
+    /// Accept a parenthesized lambda term.
+    let termPar = between ((?>)(pchar '(')) ((?<)(pchar ')')) term
+
     /// Accept an operand in lambda term application.
-    let operand =
-        between ((?>)(pchar '(')) ((?<)(pchar ')')) term |>> Brackets
-        <|> (variable |>> Variable)
+    let operand = choice [variable |>> Variable; termPar |>> Brackets]
+
+    /// Accept a lambda abstraction.
+    let abstraction = between (pchar '\\') (pchar '.') variables .>>. (?<)term |>> Abstraction
 
     /// Accept an optional lambda term application.
     let applicationOpt, applicationOptRef = createParserForwardedToRef ()
 
-    applicationOptRef.Value <-
-        attempt (!<operand .>>. applicationOpt) |>> Apply
-        <|> preturn ApplicationOpt.Epsilon
+    /// Accept an operand application with continuation.
+    let applicationOpt' = attempt (!<operand .>>. applicationOpt) |>> WithContinuation
 
-    /// Accept a lambda abstraction.
-    let abstraction = between (pchar '\\') (pchar '.') variables .>>. (?<)term |>> Abstraction
+    /// Accept a final abstraction in the application sequence.
+    let applicationOpt'' = attempt !<abstraction |>> FinalAbstraction
+
+    applicationOptRef.Value <- choice [applicationOpt'; applicationOpt''; preturn Epsilon]
 
     /// Accept a lambda term application or a single operand.
     let application = operand .>>. applicationOpt |>> Application
@@ -92,7 +97,7 @@ module Parser =
     let command = choice [reset; display; help; clear; exit]
 
     /// Accept an expression or an empty string.
-    let expressionOpt = choice [attempt term |>> Result; definition; command; preturn Epsilon]
+    let expressionOpt = choice [attempt term |>> Result; definition; command; preturn Empty]
 
     /// Accept an expression or an empty string followed by end of the input.
     let expression = expressionOpt .>> inputEnd

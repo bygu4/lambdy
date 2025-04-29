@@ -6,5 +6,8 @@ I ololo
 let  var  = I a
 var
 
+\V1  V2.V2 \x.V2 x
 \V1  V2.V2 (\x.V2 x)
+\V1  V2.(V2 \x.V2) x
+\V1  V2.V2 (\x.V2) x
 \x.\y.\x.x

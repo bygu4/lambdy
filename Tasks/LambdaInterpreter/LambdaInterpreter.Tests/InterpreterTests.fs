@@ -8,8 +8,8 @@ open System.IO
 open LambdaInterpreter
 
 let testFilesDir = "TestFiles"
-let successfulCasesPath = Path.Join [| testFilesDir; "Successful" |]
-let unsuccessfulCasesPath = Path.Join [| testFilesDir; "Unsuccessful" |]
+let successfulCasesPath = Path.Join [|testFilesDir; "Successful"|]
+let unsuccessfulCasesPath = Path.Join [|testFilesDir; "Unsuccessful"|]
 
 let successfulCasesSources = Directory.EnumerateFiles successfulCasesPath |> seq |> Seq.sort
 let unsuccessfulCasesSources = Directory.EnumerateFiles unsuccessfulCasesPath |> seq |> Seq.sort
@@ -24,15 +24,18 @@ let successfulCasesResults: Result<string, string> list list = [
     [   // Test 2
         Ok "ololo";
         Ok "a";
-        Ok "\\V1.\\V2.V2 (\\x.V2 x)";
+        Ok "\\V1.\\V2.V2 \\x.V2 x";
+        Ok "\\V1.\\V2.V2 \\x.V2 x";
+        Ok "\\V1.\\V2.V2 (\\x.V2) x";
+        Ok "\\V1.\\V2.V2 (\\x.V2) x";
         Ok "\\x.\\y.\\x.x";
     ];
     [   // Test 3
         Ok "qwerty";
         Ok "ololo (A_ B_)";
-        Ok "\\x.\\y.z (\\x.y x)";
-        Ok "Mult (Sum (\\P.P))";
-        Ok "second third (\\x.x first)";
+        Ok "\\x.\\y.z \\x.y x";
+        Ok "Mult (Sum \\P.P)";
+        Ok "second third \\x.x first";
         Ok "second third";
     ];
     [   // Test 4
@@ -44,6 +47,9 @@ let successfulCasesResults: Result<string, string> list list = [
         Ok "\\y.ololo";
         Ok "snd";
         Ok "res";
+        Ok "\\U.\\V.V \\x.U";
+        Ok "\\left.\\right.left (\\x.x) right";
+        Ok "\\x.\\y.\\z.z (z y x)";
     ];
     [   // Test 6
         Ok "a";
@@ -114,7 +120,7 @@ let unsuccessfulCasesResults: Result<string, string> list list = [
     ];
     [   // Test 5
         Error e;
-        Ok "(\\x.x x) (\\x.x x)";
+        Ok "(\\x.x x) \\x.x x";
     ];
 ]
 

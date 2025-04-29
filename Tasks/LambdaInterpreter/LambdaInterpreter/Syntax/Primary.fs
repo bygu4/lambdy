@@ -24,7 +24,8 @@ module Primary =
 
     /// Optional lambda term application.
     and ApplicationOpt =
-        | Apply of Operand * ApplicationOpt
+        | WithContinuation of Operand * ApplicationOpt
+        | FinalAbstraction of Term
         | Epsilon
 
     /// An operand in lambda term application.
@@ -32,9 +33,9 @@ module Primary =
         | Variable of Variable
         | Brackets of Term
 
-    /// An expression as a variable definition or a term result.
+    /// An expression to be interpreted.
     type Expression =
         | Definition of Variable * Term
         | Result of Term
         | Command of SpecialCommand
-        | Epsilon
+        | Empty
