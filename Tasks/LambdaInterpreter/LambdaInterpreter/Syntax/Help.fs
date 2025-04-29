@@ -5,6 +5,10 @@ open Keywords
 /// Module for displaying syntax help.
 module Help =
 
+    /// A pointer indicating the start of input for the interpreter.
+    [<Literal>]
+    let InputPointer = ">>> "
+
     /// Print syntax help to the standard output.
     let printSyntaxHelp () =
         printfn $"
@@ -16,9 +20,9 @@ Syntax:
     definition\t\t {DeclarationKeyword} {{variable}} = {{term}}
 
 Examples:
-    >>> {DeclarationKeyword} S = \\x y z.x z (y z)
-    >>> {DeclarationKeyword} K = \\x y.x
-    >>> S K K
+    {InputPointer}{DeclarationKeyword} S = \\x y z.x z (y z)
+    {InputPointer}{DeclarationKeyword} K = \\x y.x
+    {InputPointer}S K K
     \\z.z
 
 Commands:

@@ -20,7 +20,7 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
 
     /// Print a pointer indicating the start of input when running an interactive interpreter.
     let tryPrintInputPointer () =
-        if interactive then printf ">>> "
+        if interactive then printf "%s" Help.InputPointer
 
     /// Add current line number to the given string when running on a source file.
     let tryAddCurrentLine str =
