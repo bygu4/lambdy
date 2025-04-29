@@ -5,24 +5,10 @@ open System
 open LambdaInterpreter.Syntax
 open AST
 
-/// Log record of reducer execution.
-type LogRecord =
-    | StartedReducing of LambdaTerm
-    | DoneReducing
-    | Reducing of LambdaTerm
-    | AlphaConversion of Variable * Variable
-    | BetaReduction of LambdaTerm * LambdaTerm * Variable * LambdaTerm
-    | Substitution of Variable * LambdaTerm
-    | UnableToReduce of LambdaTerm
-    | NewDefinition of Variable * LambdaTerm
-    | DefinitionsReset
-    | DisplayingDefinitions
-    | NoVariablesDefined
-
 /// Class performing lambda term reduction.
 /// Use `verbose` option to print logs to the console.
 type Reducer (?verbose: bool) =
-    let verbose = defaultArg verbose false
+    let logger = new Logger (?verbose=verbose)
     let mutable variables: (Variable * LambdaTerm) list = []
 
     /// Max allowed depth of recursion during the term reduction.
@@ -32,32 +18,6 @@ type Reducer (?verbose: bool) =
     /// Message to fail with in case of stack overflow.
     [<Literal>]
     let StackOverflowMessage = "Error: max recursion depth exceeded during the reduction."
-
-    /// Print a log message from the given `record` according to verbosity.
-    let log record =
-        if verbose then
-            match record with
-            | StartedReducing term -> $"{toString term}\n|"
-            | DoneReducing -> "V"
-            | Reducing term ->
-                $"|  reducing {toString term} ..."
-            | AlphaConversion (Name x, Name y) ->
-                $"|  [alpha-conversion]: {x} -> {y}"
-            | BetaReduction (source, term, Name var, sub) ->
-                $"|  [beta-reduction]: {toString source} -> {toStringWithBrackets term}[{var} := {toString sub}]"
-            | Substitution (Name var, sub) ->
-                $"|  [substitution]: {var} -> {toString sub}"
-            | UnableToReduce term ->
-                $"|  unable to reduce {toString term}\n|  term didn't change after beta-reduction"
-            | NewDefinition (Name var, term) -> $"(!) definition: {var} = {toString term}"
-            | DefinitionsReset -> "(!) definitions were reset"
-            | DisplayingDefinitions -> "Defined variables in order:"
-            | NoVariablesDefined -> "-  no variables were defined yet"
-            |> printfn "%s"
-
-    /// Print the given definition of `var` with `term` to the console.
-    let printDefinition (Name var, term) =
-        printfn $"-  {var} := {toString term}"
 
     /// Get free variables of the given lambda `term`.
     let rec freeVars term =
@@ -77,7 +37,7 @@ type Reducer (?verbose: bool) =
     let rec substitute term (Name var) sub =
         match term with
         | Variable (Name x) when x = var ->
-            log <| Substitution (Name var, sub)
+            logger.Log <| Substitution (Name var, sub)
             sub
         | Variable _ as var -> var
         | Abstraction (Name x, _) as abs when x = var -> abs
@@ -88,7 +48,7 @@ type Reducer (?verbose: bool) =
                 Abstraction (Name x, substitute term (Name var) sub)
             else
                 let y = nextFreeVar x (Set.union freeVarsS freeVarsT) |> Name
-                log <| AlphaConversion (Name x, y)
+                logger.Log <| AlphaConversion (Name x, y)
                 Abstraction (y, substitute (substitute term (Name x) (Variable y)) (Name var) sub)
         | Application (left, right) ->
             Application (substitute left (Name var) sub, substitute right (Name var) sub)
@@ -103,16 +63,16 @@ type Reducer (?verbose: bool) =
     let reduce term =
         let rec reduce term depth =
             if depth > MaxRecursionDepth then raise <| StackOverflowException StackOverflowMessage
-            log <| Reducing term
+            logger.Log <| Reducing term
             match term with
             | Variable _ as var -> var
             | Abstraction (x, term) -> Abstraction (x, reduce term (depth + 1))
             | Application (Abstraction (var, term) as abs, sub) as source ->
-                log <| BetaReduction (source, term, var, sub)
+                logger.Log <| BetaReduction (source, term, var, sub)
                 let term = substitute term var sub
                 if term <> source then reduce term (depth + 1)
                 else
-                    log <| UnableToReduce term
+                    logger.Log <| UnableToReduce term
                     Application (reduce abs (depth + 1), reduce sub (depth + 1))
             | Application (left, right) ->
                 let left = reduce left (depth + 1)
@@ -125,17 +85,22 @@ type Reducer (?verbose: bool) =
     /// Define a `var` to be substituted with the given `term`.
     member _.AddDefinition (var: Variable, term: LambdaTerm) =
         variables <- (var, term) :: variables
-        log <| NewDefinition (var, term)
+        logger.Log <| NewDefinition (var, term)
 
     /// Reset defined variables.
     member _.Reset () =
         variables <- []
-        log <| DefinitionsReset
+        logger.Log <| DefinitionsReset
 
     /// Print defined variables to the console in order of addition.
     member _.Display () =
-        log <| DisplayingDefinitions
-        if variables.IsEmpty then log <| NoVariablesDefined else
+
+        /// Print the given definition of `var` with `term` to the console.
+        let printDefinition (Name var, term) =
+            printfn $"-  {var} := {toString term}"
+
+        logger.Log <| DisplayingDefinitions
+        if variables.IsEmpty then logger.Log <| NoVariablesDefined else
         variables
         |> List.rev
         |> List.distinct
@@ -145,7 +110,7 @@ type Reducer (?verbose: bool) =
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.
     member _.Reduce (term: LambdaTerm): LambdaTerm =
-        log <| StartedReducing term
+        logger.Log <| StartedReducing term
         let result = variables |> substituteMany term |> reduce
-        log <| DoneReducing
+        logger.Log <| DoneReducing
         result

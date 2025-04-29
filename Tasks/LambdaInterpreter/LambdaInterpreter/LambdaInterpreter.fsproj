@@ -12,6 +12,7 @@
     <Compile Include="Syntax/AST.fs" />
     <Compile Include="Syntax/Parser.fs" />
     <Compile Include="Syntax/Help.fs" />
+    <Compile Include="Logger.fs" />
     <Compile Include="Reducer.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="Console/Options.fs" />
