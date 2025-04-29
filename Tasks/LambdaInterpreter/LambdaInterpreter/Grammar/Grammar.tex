@@ -23,7 +23,11 @@
 
 <application> ::= <operand> <application\_opt>
 
-<application\_opt> ::= <whitespace> <operand> <application\_opt> | ""
+<application\_opt> ::= <application\_opt'> | <application\_opt''> | ""
+
+<application\_opt'> ::= <whitespace> <operand> <application\_opt>
+
+<application\_opt''> ::= <whitespace> <abstraction>
 
 <abstraction> ::= "$\backslash$" <variables> "." <term>
 
