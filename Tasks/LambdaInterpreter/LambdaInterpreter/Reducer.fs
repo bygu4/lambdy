@@ -16,6 +16,8 @@ type LogRecord =
     | UnableToReduce of LambdaTerm
     | NewDefinition of Variable * LambdaTerm
     | DefinitionsReset
+    | DisplayingDefinitions
+    | NoVariablesDefined
 
 /// Class performing lambda term reduction.
 /// Use `verbose` option to print logs to the console.
@@ -49,7 +51,13 @@ type Reducer (?verbose: bool) =
                 $"|  unable to reduce {toString term}\n|  term didn't change after beta-reduction"
             | NewDefinition (Name var, term) -> $"(!) definition: {var} = {toString term}"
             | DefinitionsReset -> "(!) definitions were reset"
+            | DisplayingDefinitions -> "Defined variables in order:"
+            | NoVariablesDefined -> "-  no variables were defined yet"
             |> printfn "%s"
+
+    /// Print the given definition of `var` with `term` to the console.
+    let printDefinition (Name var, term) =
+        printfn $"-  {var} := {toString term}"
 
     /// Get free variables of the given lambda `term`.
     let rec freeVars term =
@@ -123,6 +131,16 @@ type Reducer (?verbose: bool) =
     member _.Reset () =
         variables <- []
         log <| DefinitionsReset
+
+    /// Print defined variables to the console in order of addition.
+    member _.Display () =
+        log <| DisplayingDefinitions
+        if variables.IsEmpty then log <| NoVariablesDefined else
+        variables
+        |> List.rev
+        |> List.distinct
+        |> List.map printDefinition
+        |> ignore
 
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.

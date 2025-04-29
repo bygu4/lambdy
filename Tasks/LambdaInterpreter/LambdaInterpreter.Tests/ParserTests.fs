@@ -56,6 +56,7 @@ let testParser_Variable () =
         "letvar", variable, Some 6;
         "not_a_let", variable, Some 9;
         "exit", variable, None;
+        "display", variable, None;
     ] |> runTest
 
 [<Test>]
@@ -174,6 +175,7 @@ let testParser_Definition () =
 let testParser_Command () =
     [
         "reset", command, Some 5;
+        "display", command, Some 7;
         "help", command, Some 4;
         "clear", command, Some 5;
         "exit", command, Some 4;

@@ -15,6 +15,10 @@ module Keywords =
     [<Literal>]
     let ResetKeyword = "reset"
 
+    /// Keyword for displaying defined variables.
+    [<Literal>]
+    let DisplayKeyword = "display"
+
     /// Keyword for displaying help info.
     [<Literal>]
     let HelpKeyword = "help"
@@ -31,6 +35,7 @@ module Keywords =
     let keywords = [
         DeclarationKeyword;
         ResetKeyword;
+        DisplayKeyword;
         HelpKeyword;
         ClearKeyword;
         ExitKeyword;

@@ -3,6 +3,7 @@ namespace LambdaInterpreter.Console
 open System
 open LambdaInterpreter.Syntax
 
+/// Module for displaying command line help.
 module Help =
 
     /// Message to print when failed to interpret the given command line arguments.

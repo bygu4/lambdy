@@ -76,6 +76,9 @@ module Parser =
     /// Accept a keyword for resetting defined variables.
     let reset: Parser<Expression, unit> = pstring ResetKeyword >>. preturn (Command Reset)
 
+    /// Accept a keyword for displaying defined variables.
+    let display: Parser<Expression, unit> = pstring DisplayKeyword >>. preturn (Command Display)
+
     /// Accept a keyword for displaying help.
     let help: Parser<Expression, unit> = pstring HelpKeyword >>. preturn (Command Help)
 
@@ -86,7 +89,7 @@ module Parser =
     let exit: Parser<Expression, unit> = pstring ExitKeyword >>. preturn (Command Exit)
 
     /// Accept a special interpreter command.
-    let command = choice [reset; help; clear; exit]
+    let command = choice [reset; display; help; clear; exit]
 
     /// Accept an expression or an empty string.
     let expressionOpt = choice [attempt term |>> Result; definition; command; preturn Epsilon]

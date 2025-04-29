@@ -2,6 +2,7 @@ namespace LambdaInterpreter.Syntax
 
 open Keywords
 
+/// Module for displaying syntax help.
 module Help =
 
     /// Print syntax help to the standard output.
@@ -22,6 +23,7 @@ Examples:
 
 Commands:
     {ResetKeyword}\t\t Reset defined variables
+    {DisplayKeyword}\t\t Display definitions in order of addition
     {HelpKeyword}\t\t Display help
     {ClearKeyword}\t\t Clear console buffer
     {ExitKeyword}\t\t Stop the execution and exit

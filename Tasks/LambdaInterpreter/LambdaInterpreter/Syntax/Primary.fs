@@ -9,6 +9,7 @@ type Variables = Variable list
 /// A special command for managing the interpreter execution.
 type SpecialCommand =
     | Reset
+    | Display
     | Help
     | Clear
     | Exit

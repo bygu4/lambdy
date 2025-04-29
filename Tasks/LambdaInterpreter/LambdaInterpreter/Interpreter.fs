@@ -67,6 +67,7 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
         let runCommand (command: SpecialCommand) =
             match command with
             | Reset -> reducer.Reset ()
+            | Display -> if interactive then reducer.Display ()
             | Help -> if interactive then Help.printSyntaxHelp ()
             | Clear -> if interactive then Console.Clear ()
             | Exit -> reader.Close ()
