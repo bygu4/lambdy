@@ -1,5 +1,6 @@
 let let = a
 let reset = B
+let display = trololo
 let help = Q
 let clear = P
 let exit = ololo
@@ -9,3 +10,4 @@ a help
 test let
 clear ( a b c)
 exit ooo
+to display

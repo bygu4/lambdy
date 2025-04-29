@@ -87,6 +87,8 @@ let unsuccessfulCasesResults: Result<string, string> list list = [
         Error e;
         Error e;
         Error e;
+        Error e;
+        Error e;
     ];
     [   // Test 3
         Error e;
