@@ -34,7 +34,7 @@ type Reducer (?verbose: bool) =
 
     /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
     /// Perform alpha-conversion if necessary.
-    let rec substitute term (Name var) sub =
+    let rec substitute term (Name var, sub) =
         match term with
         | Variable (Name x) when x = var ->
             logger.Log <| Substitution (Name var, sub)
@@ -45,18 +45,17 @@ type Reducer (?verbose: bool) =
             let freeVarsS = freeVars sub
             let freeVarsT = freeVars term
             if not (Set.contains var freeVarsT && Set.contains x freeVarsS) then
-                Abstraction (Name x, substitute term (Name var) sub)
+                Abstraction (Name x, substitute term (Name var, sub))
             else
                 let y = nextFreeVar x (Set.union freeVarsS freeVarsT) |> Name
                 logger.Log <| AlphaConversion (Name x, y)
-                Abstraction (y, substitute (substitute term (Name x) (Variable y)) (Name var) sub)
+                Abstraction (y, substitute (substitute term (Name x, Variable y)) (Name var, sub))
         | Application (left, right) ->
-            Application (substitute left (Name var) sub, substitute right (Name var) sub)
+            Application (substitute left (Name var, sub), substitute right (Name var, sub))
 
     /// Substitute variables in `term` according to the given `subs` pair sequence.
     let substituteMany term subs =
-        subs
-        |> Seq.fold (fun acc (var, sub) -> substitute acc var sub) term
+        subs |> Seq.fold substitute term
 
     /// Perform beta-reduction of the given lambda `term`.
     /// Perform alpha-conversion if necessary.
@@ -69,7 +68,7 @@ type Reducer (?verbose: bool) =
             | Abstraction (x, term) -> Abstraction (x, reduce term (depth + 1))
             | Application (Abstraction (var, term) as abs, sub) as source ->
                 logger.Log <| BetaReduction (source, term, var, sub)
-                let term = substitute term var sub
+                let term = substitute term (var, sub)
                 if term <> source then reduce term (depth + 1)
                 else
                     logger.Log <| UnableToReduce term
