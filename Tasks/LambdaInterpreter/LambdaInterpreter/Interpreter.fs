@@ -16,6 +16,7 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
 
     let mutable currentLine = 0
     let mutable syntaxError = false
+    let mutable stackOverflow = false
 
     /// Print a pointer indicating the start of input when running an interactive interpreter.
     let tryPrintInputPointer () =
@@ -68,6 +69,9 @@ Commands:
     /// Whether a syntax error occurred during the interpretation.
     member _.SyntaxError: bool = syntaxError
 
+    /// Whether a stack overflow occurred during the term reduction.
+    member _.StackOverflow: bool = stackOverflow
+
     /// Run the interpreter while possible and yield the interpretation results.
     member self.RunToEnd (): Result<string, string> seq =
         seq {
@@ -97,11 +101,14 @@ Commands:
                 reducer.AddDefinition (var, term)
                 None
             | Result term ->
-                reducer.Reduce term
-                |> toString
-                |> tryAddCurrentLine
-                |> Result.Ok
-                |> Some
+                try reducer.Reduce term
+                    |> toString
+                    |> tryAddCurrentLine
+                    |> Result.Ok
+                    |> Some
+                with :? StackOverflowException as ex ->
+                    stackOverflow <- true
+                    ex.Message |> tryAddCurrentLine |> Result.Error |> Some
             | Command command -> runCommand command
             | Empty -> None
 

@@ -1,0 +1,6 @@
+let e = \x.x x x
+\Z.e e
+
+let o = \x.x x
+let O = o o
+O

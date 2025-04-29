@@ -110,6 +110,10 @@ let unsuccessfulCasesResults: Result<string, string> list list = [
         Ok "bar";
         Ok "foo bar";
     ];
+    [   // Test 5
+        Error e;
+        Ok "(\\x.x x) (\\x.x x)";
+    ];
 ]
 
 let successfulCases =
@@ -138,4 +142,4 @@ let testInterpreter (sourceFile: string, expectedOutput: Result<string, string> 
     let interpreter = Interpreter.StartOnFile sourceFile
     let output = interpreter.RunToEnd () |> Seq.toList
     output |> outputsMatch expectedOutput |> should be True
-    interpreter.SyntaxError |> should equal shouldFail
+    (interpreter.SyntaxError || interpreter.StackOverflow) |> should equal shouldFail

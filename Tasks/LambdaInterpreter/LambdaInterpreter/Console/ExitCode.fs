@@ -14,10 +14,15 @@ module ExitCode =
         /// The given source file was not found.
         | FileNotFound = 2
 
-        /// A syntax error has occurred during source file interpretation.
+        /// A syntax error occurred during source file interpretation.
         | SyntaxError = 3
+
+        /// A stack overflow occurred during the source file term reduction.
+        | StackOverflow = 4
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
     let getExitCode (interpreter: Interpreter) =
-        if interpreter.IsInteractive || not interpreter.SyntaxError then ExitCode.Success
-        else ExitCode.SyntaxError
+        if interpreter.IsInteractive then ExitCode.Success else
+        if interpreter.SyntaxError then ExitCode.SyntaxError else
+        if interpreter.StackOverflow then ExitCode.StackOverflow else
+        ExitCode.Success
