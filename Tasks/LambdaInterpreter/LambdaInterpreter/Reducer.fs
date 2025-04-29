@@ -21,7 +21,7 @@ type Reducer (?verbose: bool) =
 
     /// Max allowed depth of recursion during the term reduction.
     [<Literal>]
-    let MaxRecursionDepth = 8192
+    let MaxRecursionDepth = 4096
 
     /// Message to fail with in case of stack overflow.
     [<Literal>]
