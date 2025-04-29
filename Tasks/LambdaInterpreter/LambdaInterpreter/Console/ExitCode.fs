@@ -5,6 +5,7 @@ open LambdaInterpreter
 /// Module containing utility regarding the exit code of the app.
 module ExitCode =
 
+    /// Enum representing the exit code of the app.
     type ExitCode =
 
         /// The program execution was successful.
