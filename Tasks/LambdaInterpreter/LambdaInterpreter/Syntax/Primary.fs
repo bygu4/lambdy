@@ -1,4 +1,4 @@
-namespace LambdaInterpreter
+namespace LambdaInterpreter.Syntax
 
 /// A variable of specific name.
 type Variable = Name of string

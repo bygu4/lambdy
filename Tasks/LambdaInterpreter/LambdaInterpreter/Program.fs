@@ -2,40 +2,22 @@ open System
 open System.IO
 
 open LambdaInterpreter
-open Keywords
+open LambdaInterpreter.Console
 open ColorScheme
 open ExitCode
+open Help
 
 /// Print header with general info about the app and a help suggestion.
-let printHeader () =
-    printfn $"
-Lambda Interpreter
-------------------
-An interactive lambda term interpreter.
+let printHeaderWithHelpSuggestion () =
+    printHeader ()
+    printHelpSuggestion ()
 
-Type '{HelpKeyword}' for more info.
-"
-
-/// Print command line help.
-let printHelp () =
-    printfn $"
-Lambda Interpreter
-------------------
-An interactive lambda term interpreter.
-It can either be run interactively using the standard input,
-or on a specified source file.
-
-Usage: LambdaInterpreter [path-to-file] [options]
-
-Options:
-    {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
-    {String.Join ('|', Options.VerboseArgs)}\t Print detailed interpretation info
-    {String.Join ('|', Options.LineNumberArgs)}\t Print line number with output"
-    Interpreter.PrintHelp ()
-
-/// Message to print when failed to interpret the given command line args.
-let invalidArgsMessage =
-    $"Invalid command line arguments provided. For more info use '{Array.last Options.HelpArgs}' option."
+/// Print header with general info about the app followed by command line and interpreter usage help.
+let printHeaderWithHelp () =
+    printHeader ()
+    printUsageHelp ()
+    printOptionsHelp ()
+    printSyntaxHelp ()
 
 /// Print the given `message` to the standard output with the given `color`.
 let printMessage (color: ConsoleColor) (message: string) =
@@ -52,12 +34,12 @@ let handleOutput (Color success, Color error) (output: Result<string, string>) =
 let options = Options.GetFromArgs ()
 
 if options.Help then
-    printHelp ()
+    printHeaderWithHelp ()
     exit <| int ExitCode.Success
 
 if options.Error then
     printMessage ConsoleColor.Red invalidArgsMessage
-    exit <| int ExitCode.BadArguments
+    exit <| int ExitCode.InvalidArguments
 
 let interpreter =
     match options.SourceFile with
@@ -70,7 +52,7 @@ let interpreter =
 
 using interpreter (fun interpreter ->
     let colorScheme = getColorScheme interpreter
-    if interpreter.IsInteractive then printHeader ()
+    if interpreter.IsInteractive then printHeaderWithHelpSuggestion ()
 
     for output in interpreter.RunToEnd () do
         handleOutput colorScheme output

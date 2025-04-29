@@ -4,6 +4,7 @@ open NUnit.Framework
 open FsUnit
 
 open LambdaInterpreter
+open LambdaInterpreter.Syntax
 open AST
 
 let id var = Abstraction (var, Variable var)

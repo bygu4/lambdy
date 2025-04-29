@@ -4,7 +4,7 @@ open NUnit.Framework
 open FsUnit
 open FParsec
 
-open LambdaInterpreter
+open LambdaInterpreter.Syntax
 open Parser
 
 let runTest (testCases: (string * Parser<'a, unit> * int option) seq) =

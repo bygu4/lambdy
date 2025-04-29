@@ -1,4 +1,6 @@
-namespace LambdaInterpreter
+namespace LambdaInterpreter.Console
+
+open LambdaInterpreter
 
 /// Module containing utility regarding the exit code of the app.
 module ExitCode =
@@ -9,7 +11,7 @@ module ExitCode =
         | Success = 0
 
         /// The given command line arguments are invalid.
-        | BadArguments = 1
+        | InvalidArguments = 1
 
         /// The given source file was not found.
         | FileNotFound = 2

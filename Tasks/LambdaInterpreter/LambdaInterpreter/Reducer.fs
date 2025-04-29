@@ -1,6 +1,8 @@
 ﻿namespace LambdaInterpreter
 
 open System
+
+open LambdaInterpreter.Syntax
 open AST
 
 /// Log record of reducer execution.

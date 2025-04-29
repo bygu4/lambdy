@@ -1,6 +1,7 @@
-namespace LambdaInterpreter
+namespace LambdaInterpreter.Console
 
 open System
+open LambdaInterpreter
 
 /// Module containing utility regarding the console output color.
 module ColorScheme =

@@ -1,4 +1,4 @@
-namespace LambdaInterpreter
+namespace LambdaInterpreter.Syntax
 
 open System
 open Primary

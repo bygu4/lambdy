@@ -4,7 +4,7 @@ open System
 open System.IO
 open FParsec
 
-open Keywords
+open LambdaInterpreter.Syntax
 open AST
 open Parser
 
@@ -25,28 +25,6 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
     /// Add current line number to the given string when running on a source file.
     let tryAddCurrentLine str =
         if lineNumber then $"[Line {currentLine}] {str}" else str
-
-    /// Print help info to the standard output.
-    static member PrintHelp () = printfn $"
-Syntax:
-    variable\t\t {VariablePattern}
-    term\t\t {{variable}}|{{abstraction}}|{{application}}|({{term}})
-    application\t\t {{term}} {{term}}
-    abstraction\t\t \\{{variables}}.{{term}}
-    definition\t\t {DeclarationKeyword} {{variable}} = {{term}}
-
-Examples:
-    >>> {DeclarationKeyword} S = \\x y z.x z (y z)
-    >>> {DeclarationKeyword} K = \\x y.x
-    >>> S K K
-    \\z.z
-
-Commands:
-    {ResetKeyword}\t\t Reset defined variables
-    {HelpKeyword}\t\t Display help
-    {ClearKeyword}\t\t Clear console buffer
-    {ExitKeyword}\t\t Stop the execution and exit
-"
 
     /// Create an interactive interpreter for the standard console input.
     /// Use `verbose` option to print logs to the console.
@@ -89,7 +67,7 @@ Commands:
         let runCommand (command: SpecialCommand) =
             match command with
             | Reset -> reducer.Reset ()
-            | Help -> if interactive then Interpreter.PrintHelp ()
+            | Help -> if interactive then Help.printSyntaxHelp ()
             | Clear -> if interactive then Console.Clear ()
             | Exit -> reader.Close ()
             None

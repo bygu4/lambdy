@@ -1,4 +1,4 @@
-namespace LambdaInterpreter
+namespace LambdaInterpreter.Syntax
 
 /// Module dealing with keyword definitions.
 module Keywords =
