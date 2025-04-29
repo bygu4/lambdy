@@ -6,12 +6,14 @@ open AST
 /// Log record of reducer execution.
 type LogRecord =
     | StartedReducing of LambdaTerm
+    | DoneReducing
     | Reducing of LambdaTerm
     | AlphaConversion of Variable * Variable
     | BetaReduction of LambdaTerm * LambdaTerm * Variable * LambdaTerm
     | Substitution of Variable * LambdaTerm
-    | AddingDefinition of Variable * LambdaTerm
-    | Resetting
+    | UnableToReduce of LambdaTerm
+    | NewDefinition of Variable * LambdaTerm
+    | DefinitionsReset
 
 /// Class performing lambda term reduction.
 /// Use `verbose` option to print logs to the console.
@@ -31,8 +33,8 @@ type Reducer (?verbose: bool) =
     let log record =
         if verbose then
             match record with
-            | StartedReducing term ->
-                toString term
+            | StartedReducing term -> $"{toString term}\n|"
+            | DoneReducing -> "V"
             | Reducing term ->
                 $"|  reducing {toString term} ..."
             | AlphaConversion (Name x, Name y) ->
@@ -41,10 +43,10 @@ type Reducer (?verbose: bool) =
                 $"|  [beta-reduction]: {toString source} -> {toStringWithBrackets term}[{var} := {toString sub}]"
             | Substitution (Name var, sub) ->
                 $"|  [substitution]: {var} -> {toString sub}"
-            | AddingDefinition (Name var, term) ->
-                $"adding definition: {var} = {toString term} ..."
-            | Resetting ->
-                "resetting defined variables ..."
+            | UnableToReduce term ->
+                $"|  unable to reduce {toString term}\n|  term didn't change after beta-reduction"
+            | NewDefinition (Name var, term) -> $"(!) definition: {var} = {toString term}"
+            | DefinitionsReset -> "(!) definitions were reset"
             |> printfn "%s"
 
     /// Get free variables of the given lambda `term`.
@@ -99,7 +101,9 @@ type Reducer (?verbose: bool) =
                 log <| BetaReduction (source, term, var, sub)
                 let term = substitute term var sub
                 if term <> source then reduce term (depth + 1)
-                else Application (reduce abs (depth + 1), reduce sub (depth + 1))
+                else
+                    log <| UnableToReduce term
+                    Application (reduce abs (depth + 1), reduce sub (depth + 1))
             | Application (left, right) ->
                 let left = reduce left (depth + 1)
                 let right = reduce right (depth + 1)
@@ -110,16 +114,18 @@ type Reducer (?verbose: bool) =
 
     /// Define a `var` to be substituted with the given `term`.
     member _.AddDefinition (var: Variable, term: LambdaTerm) =
-        log <| AddingDefinition (var, term)
         variables <- (var, term) :: variables
+        log <| NewDefinition (var, term)
 
     /// Reset defined variables.
     member _.Reset () =
-        log <| Resetting
         variables <- []
+        log <| DefinitionsReset
 
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.
     member _.Reduce (term: LambdaTerm): LambdaTerm =
         log <| StartedReducing term
-        variables |> substituteMany term |> reduce
+        let result = variables |> substituteMany term |> reduce
+        log <| DoneReducing
+        result
