@@ -150,4 +150,4 @@ let testInterpreter (sourceFile: string, expectedOutput: Result<string, string> 
     let interpreter = Interpreter.StartOnFile sourceFile
     let output = interpreter.RunToEnd () |> Seq.toList
     output |> outputsMatch expectedOutput |> should be True
-    (interpreter.SyntaxError || interpreter.StackOverflow) |> should equal shouldFail
+    (interpreter.SyntaxError || interpreter.MaxDepthExceeded) |> should equal shouldFail

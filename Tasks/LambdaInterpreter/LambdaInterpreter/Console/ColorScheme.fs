@@ -15,6 +15,9 @@ module ColorScheme =
     /// Color scheme of the console application.
     type ColorScheme = SuccessColor * ErrorColor
 
+    /// Default color of messages signaling of error.
+    let defaultErrorColor = ConsoleColor.Red
+
     /// Get the color scheme of the app according to the state of the given `interpreter`.
     let getColorScheme (interpreter: Interpreter) =
         if interpreter.IsInteractive then Color ConsoleColor.Green, Color ConsoleColor.Yellow

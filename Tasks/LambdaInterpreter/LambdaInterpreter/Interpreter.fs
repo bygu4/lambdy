@@ -16,7 +16,7 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
 
     let mutable currentLine = 0
     let mutable syntaxError = false
-    let mutable stackOverflow = false
+    let mutable maxDepthExceeded = false
 
     /// Print a pointer indicating the start of input when running an interactive interpreter.
     let tryPrintInputPointer () =
@@ -47,8 +47,8 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
     /// Whether a syntax error occurred during the interpretation.
     member _.SyntaxError: bool = syntaxError
 
-    /// Whether a stack overflow occurred during the term reduction.
-    member _.StackOverflow: bool = stackOverflow
+    /// Whether max allowed depth of recursion exceeded during the term reduction.
+    member _.MaxDepthExceeded: bool = maxDepthExceeded
 
     /// Run the interpreter while possible and yield the interpretation results.
     member self.RunToEnd (): Result<string, string> seq =
@@ -66,8 +66,8 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
         /// Execute the given special interpreter `command`.
         let runCommand (command: SpecialCommand) =
             match command with
-            | Reset -> reducer.Reset ()
-            | Display -> if interactive then reducer.Display ()
+            | Reset -> reducer.ResetDefinitions ()
+            | Display -> if interactive then reducer.DisplayDefinitions ()
             | Help -> if interactive then Help.printSyntaxHelp ()
             | Clear -> if interactive then Console.Clear ()
             | Exit -> reader.Close ()
@@ -86,7 +86,7 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
                     |> Result.Ok
                     |> Some
                 with :? StackOverflowException as ex ->
-                    stackOverflow <- true
+                    maxDepthExceeded <- true
                     ex.Message |> tryAddCurrentLine |> Result.Error |> Some
             | Command command -> runCommand command
             | Empty -> None

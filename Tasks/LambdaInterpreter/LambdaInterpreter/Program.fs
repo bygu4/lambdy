@@ -38,7 +38,7 @@ if options.Help then
     exit <| int ExitCode.Success
 
 if options.Error then
-    printMessage ConsoleColor.Red invalidArgsMessage
+    printMessage defaultErrorColor invalidArgsMessage
     exit <| int ExitCode.InvalidArguments
 
 let interpreter =
@@ -46,7 +46,7 @@ let interpreter =
     | Some path ->
         try Interpreter.StartOnFile (path, options.Verbose, options.LineNumber)
         with :? IOException | :? UnauthorizedAccessException as ex ->
-            printMessage ConsoleColor.Red ex.Message
+            printMessage defaultErrorColor ex.Message
             exit <| int ExitCode.FileNotFound
     | None -> Interpreter.StartInteractive options.Verbose
 

@@ -20,12 +20,12 @@ module ExitCode =
         /// A syntax error occurred during source file interpretation.
         | SyntaxError = 3
 
-        /// A stack overflow occurred during the source file term reduction.
-        | StackOverflow = 4
+        /// Max allowed depth of recursion exceeded during the source file term reduction.
+        | MaxDepthExceeded = 4
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
     let getExitCode (interpreter: Interpreter) =
         if interpreter.IsInteractive then ExitCode.Success else
         if interpreter.SyntaxError then ExitCode.SyntaxError else
-        if interpreter.StackOverflow then ExitCode.StackOverflow else
+        if interpreter.MaxDepthExceeded then ExitCode.MaxDepthExceeded else
         ExitCode.Success
