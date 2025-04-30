@@ -20,12 +20,24 @@ type Reducer (?verbose: bool) =
     let MaxDepthExceededMessage = "Error: max recursion depth exceeded during the reduction."
 
     /// Get free variables of the given lambda `term`.
-    let rec freeVars term =
-        match term with
-        | Variable (Name v) -> set [v]
-        | Abstraction (Name v, term) -> Set.remove v (freeVars term)
-        | Application (left, right) -> 
-            Set.union (freeVars left) (freeVars right)
+    let freeVars term =
+
+        /// Get free variables of the given lambda `term` using CPS with the given `cont`.
+        let rec freeVars term cont =
+            match term with
+            | Variable (Name v) -> set [v] |> cont
+            | Abstraction (Name v, term) ->
+                freeVars term (fun termVars ->
+                    Set.remove v termVars |> cont
+                )
+            | Application (left, right) -> 
+                freeVars left (fun leftVars ->
+                    freeVars right (fun rightVars ->
+                        Set.union leftVars rightVars |> cont
+                    )
+                )
+
+        in freeVars term id
 
     /// Get a variable, starting with `prefix`, that is not in `freeVars`.
     let rec nextFreeVar prefix freeVars =
@@ -34,24 +46,50 @@ type Reducer (?verbose: bool) =
 
     /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
     /// Perform alpha-conversion if necessary.
-    let rec substitute term (Name var, sub) =
-        match term with
-        | Variable (Name x) when x = var ->
-            logger.Log <| Substitution (Name var, sub)
-            sub
-        | Variable _ as var -> var
-        | Abstraction (Name x, _) as abs when x = var -> abs
-        | Abstraction (Name x, term) ->
-            let freeVarsS = freeVars sub
-            let freeVarsT = freeVars term
-            if not (Set.contains var freeVarsT && Set.contains x freeVarsS) then
-                Abstraction (Name x, substitute term (Name var, sub))
-            else
-                let y = nextFreeVar x (Set.union freeVarsS freeVarsT) |> Name
-                logger.Log <| AlphaConversion (Name x, y)
-                Abstraction (y, substitute (substitute term (Name x, Variable y)) (Name var, sub))
-        | Application (left, right) ->
-            Application (substitute left (Name var, sub), substitute right (Name var, sub))
+    let substitute term (Name var, sub) =
+
+        /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
+        /// Use CPS with the given `cont`.
+        let rec substitute term (Name var, sub) cont =
+            match term with
+
+            // Substitute free occurrence of a matching variable.
+            | Variable (Name x) when x = var ->
+                logger.Log <| Substitution (Name var, sub)
+                cont sub
+
+            // Nothing to substitute, call continuation.
+            | Variable _ as var -> cont var
+
+            // Our variable is bounded, call continuation.
+            | Abstraction (Name x, _) as abs when x = var -> cont abs
+
+            // Check free variables and perform alpha-conversion to avoid capturing.
+            | Abstraction (Name x, term) ->
+                let freeVarsT = freeVars term
+                let freeVarsS = freeVars sub
+                if Set.contains var freeVarsT && Set.contains x freeVarsS then
+                    let y = nextFreeVar x (Set.union freeVarsT freeVarsS) |> Name
+                    logger.Log <| AlphaConversion (Name x, y)
+                    substitute term (Name x, Variable y) (fun converted ->
+                        substitute converted (Name var, sub) (fun subsTerm ->
+                            Abstraction (y, subsTerm) |> cont
+                        )
+                    )
+                else
+                    substitute term (Name var, sub) (fun subsTerm ->
+                        Abstraction (Name x, subsTerm) |> cont
+                    )
+
+            // Make substitution in both parts of the application.
+            | Application (left, right) ->
+                substitute left (Name var, sub) (fun subsLeft ->
+                    substitute right (Name var, sub) (fun subsRight ->
+                        Application (subsLeft, subsRight) |> cont
+                    )
+                )
+
+        in substitute term (Name var, sub) id
 
     /// Substitute variables in `term` according to the given `subs` pair sequence.
     let substituteMany term subs =
@@ -73,11 +111,11 @@ type Reducer (?verbose: bool) =
 
             // Reduce the right part of the abstraction and pass it to continuation.
             | Abstraction (var, term) ->
-                reduce term (depth + 1) (
-                    fun reducedTerm -> Abstraction (var, reducedTerm) |> cont
+                reduce term (depth + 1) (fun reducedTerm ->
+                    Abstraction (var, reducedTerm) |> cont
                 )
 
-            // Perform beta reduction and then reduce the result.
+            // Perform beta-reduction and then reduce the result.
             | Application (Abstraction (var, term) as abs, sub) as source ->
                 logger.Log <| BetaReduction (source, term, var, sub)
                 let term = substitute term (var, sub)
@@ -101,6 +139,14 @@ type Reducer (?verbose: bool) =
                 )
 
         in reduce term 0 id
+
+    /// Perform beta-reduction of the given lambda `term` according to defined variables.
+    /// Perform alpha-conversion if necessary.
+    member _.Reduce (term: LambdaTerm): LambdaTerm =
+        logger.Log <| StartedReducing term
+        let result = variables |> substituteMany term |> reduce
+        logger.Log <| DoneReducing
+        result
 
     /// Define a `var` to be substituted with the given `term`.
     member _.AddDefinition (var: Variable, term: LambdaTerm) =
@@ -126,11 +172,3 @@ type Reducer (?verbose: bool) =
         |> List.distinct
         |> List.map printDefinition
         |> ignore
-
-    /// Perform beta-reduction of the given lambda `term` according to defined variables.
-    /// Perform alpha-conversion if necessary.
-    member _.Reduce (term: LambdaTerm): LambdaTerm =
-        logger.Log <| StartedReducing term
-        let result = variables |> substituteMany term |> reduce
-        logger.Log <| DoneReducing
-        result
