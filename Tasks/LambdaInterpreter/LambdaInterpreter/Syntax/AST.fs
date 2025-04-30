@@ -58,28 +58,23 @@ module AST =
 
     /// Get a string representation of the given lambda `term`.
     /// Add brackets if necessary for a proper operation priority.
-    let rec private toStringInternal (term: LambdaTerm) (withBrackets: bool) = 
+    let rec private toStringInternal term parenthesized closing = 
         match term with
         | Variable (Name var) -> var
-        | Application (Application (left, (Abstraction _ as abs)), right) ->
-            let left = toStringInternal left left.IsAbstraction
-            let abs = toStringInternal abs true
-            let right = toStringInternal right right.IsApplication
-            let term = $"{left} {abs} {right}"
-            if withBrackets then $"({term})" else term
         | Application (left, right) ->
-            let left = toStringInternal left left.IsAbstraction
-            let right = toStringInternal right right.IsApplication
+            let parenthesizedRight = right.IsApplication || right.IsAbstraction && not closing
+            let left = toStringInternal left left.IsAbstraction false
+            let right = toStringInternal right parenthesizedRight closing
             let term = $"{left} {right}"
-            if withBrackets then $"({term})" else term
+            if parenthesized then $"({term})" else term
         | Abstraction (Name var, term) ->
-            let term = $"\\{var}.{toStringInternal term false}"
-            if withBrackets then $"({term})" else term
+            let term = $"\\{var}.{toStringInternal term false true}"
+            if parenthesized then $"({term})" else term
 
     /// Get a string representation of the given lambda `term`.
     let toString (term: LambdaTerm) =
-        toStringInternal term false
+        toStringInternal term false true
 
     /// Get a string representation of the given lambda `term` and surround it with brackets if necessary.
-    let toStringWithBrackets (term: LambdaTerm) =
-        toStringInternal term true
+    let toStringParenthesized (term: LambdaTerm) =
+        toStringInternal term true true

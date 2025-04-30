@@ -33,7 +33,7 @@ type Logger (?verbose: bool) =
             | AlphaConversion (Name x, Name y) ->
                 $"|  [alpha-conversion]: {x} -> {y}"
             | BetaReduction (source, term, Name var, sub) ->
-                $"|  [beta-reduction]: {toString source} -> {toStringWithBrackets term}[{var} := {toString sub}]"
+                $"|  [beta-reduction]: {toString source} -> {toStringParenthesized term}[{var} := {toString sub}]"
             | Substitution (Name var, sub) ->
                 $"|  [substitution]: {var} -> {toString sub}"
             | UnableToReduce term ->

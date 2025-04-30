@@ -42,6 +42,7 @@ let successfulCasesResults: Result<string, string> list list = [
         Ok "x y";
         Ok "x";
         Ok "\\y'.y y'";
+        Ok "(\\x.x x) (\\x.x x) (\\x.x x) \\x.x x";
     ];
     [   // Test 5
         Ok "\\y.ololo";

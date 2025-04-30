@@ -73,7 +73,7 @@ module Parser =
     termRef.Value <- choice [application; abstraction]
 
     /// Accept a variable declaration.
-    let declaration = pstring "let" >>. !<variable 
+    let declaration = pstring DeclarationKeyword >>. !<variable 
 
     /// Accept a variable declaration with assignment.
     let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition

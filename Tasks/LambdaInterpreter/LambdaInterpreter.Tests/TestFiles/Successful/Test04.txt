@@ -4,3 +4,7 @@ let x =  \z.x
 x y
 
 (\x  y.x y) y
+
+let o = \x. x x
+let E = \ y. y y y  y
+E o
