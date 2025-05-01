@@ -81,8 +81,9 @@ module AST =
         match term with
         | Variable (Name var) -> cont var
         | Application (left, right) ->
+            let closedAbstraction = parenthesized || closing
             let parenthesizedLeft = left.IsAbstraction
-            let parenthesizedRight = right.IsApplication || right.IsAbstraction && not closing
+            let parenthesizedRight = right.IsApplication || right.IsAbstraction && not closedAbstraction
             toStringCPS left parenthesizedLeft false (fun leftStr ->
                 toStringCPS right parenthesizedRight closing (fun rightStr ->
                     let termStr = $"{leftStr} {rightStr}"

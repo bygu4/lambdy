@@ -139,6 +139,7 @@ let unsuccessfulCasesResults: Result<string, string> list list = [
     [   // Test 5
         Error e;
         Ok "(\\x.x x) \\x.x x";
+        Ok "(\\x.x x) (\\x.x x) ((\\x.x x) \\x.x x) ((\\x.x x) \\x.x x)";
     ];
 ]
 
