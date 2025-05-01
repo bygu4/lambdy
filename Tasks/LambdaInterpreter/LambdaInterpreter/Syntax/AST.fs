@@ -20,61 +20,87 @@ module AST =
         | Empty
 
     /// Build AST of a lambda term using the `primary` representation.
-    let rec buildAST_Term (primary: Primary.Term) =
+    /// Use CPS with the given `cont`.
+    [<TailCall>]
+    let rec private buildTermAST_CPS (primary: Primary.Term) cont =
 
         /// Convert `primary` operand representation to the lambda term.
-        let buildAST_Operand (primary: Primary.Operand) =
+        let buildOperandAST (primary: Primary.Operand) cont =
             match primary with
-            | Primary.Variable var -> Variable var
-            | Brackets term -> buildAST_Term term
+            | Primary.Variable var -> Variable var |> cont
+            | Brackets term -> buildTermAST_CPS term cont
 
         /// Build AST of lambda term application using term on the `left` and the rest on `right`.
-        let rec buildAST_Application (left: LambdaTerm, right: Primary.ApplicationOpt) =
+        let rec buildApplicationAST (left: LambdaTerm) (right: Primary.ApplicationOpt) cont =
             match right with
             | WithContinuation (operand, rest) ->
-                let right = buildAST_Operand operand
-                let partial = Application (left, right)
-                buildAST_Application (partial, rest)
-            | FinalAbstraction abs -> Application (left, buildAST_Term abs)
-            | Epsilon -> left
+                buildOperandAST operand (fun right ->
+                    let partial = Application (left, right)
+                    buildApplicationAST partial rest cont
+                )
+            | FinalAbstraction abs ->
+                buildTermAST_CPS abs (fun right ->
+                    Application (left, right) |> cont
+                )
+            | Epsilon -> cont left
 
         match primary with
         | Primary.Application (operand, rest) ->
-            let operand = buildAST_Operand operand
-            buildAST_Application (operand, rest)
+            buildOperandAST operand (fun operandAST ->
+                buildApplicationAST operandAST rest cont
+            )
         | Primary.Abstraction (head :: tail, term) ->
-            if tail.IsEmpty then Abstraction (head, buildAST_Term term)
-            else Abstraction (head, buildAST_Term (Primary.Abstraction (tail, term)))
+            if tail.IsEmpty then
+                buildTermAST_CPS term (fun termAST ->
+                    Abstraction (head, termAST) |> cont
+                )
+            else
+                buildTermAST_CPS (Primary.Abstraction (tail, term)) (fun termAST ->
+                    Abstraction (head, termAST) |> cont
+                )
         | Primary.Abstraction ([], _) ->
             raise (ArgumentException "Abstraction received empty variable list")
 
+    /// Build AST of a lambda term using the `primary` representation.
+    let buildTermAST (primary: Primary.Term) = buildTermAST_CPS primary id
+
     /// Build a finalized expression representation from the `primary` one.
-    let buildAST_Expression (primary: Primary.Expression) =
+    let buildExpressionAST (primary: Primary.Expression) =
         match primary with
-        | Primary.Definition (variable, term) -> Definition (variable, buildAST_Term term)
-        | Primary.Result term -> Result (buildAST_Term term)
+        | Primary.Definition (variable, term) -> Definition (variable, buildTermAST term)
+        | Primary.Result term -> Result (buildTermAST term)
         | Primary.Command command -> Command command
         | Primary.Empty -> Empty
 
     /// Get a string representation of the given lambda `term`.
-    /// Add brackets if necessary for a proper operation priority.
-    let rec private toStringInternal term parenthesized closing = 
+    /// Use `parenthesized` to surround term with brackets if it's not a variable.
+    /// Use `closing` to indicate that term is last in the application sequence.
+    /// Use CPS with the given `cont`.
+    [<TailCall>]
+    let rec private toStringCPS term parenthesized closing cont = 
         match term with
-        | Variable (Name var) -> var
+        | Variable (Name var) -> cont var
         | Application (left, right) ->
+            let parenthesizedLeft = left.IsAbstraction
             let parenthesizedRight = right.IsApplication || right.IsAbstraction && not closing
-            let left = toStringInternal left left.IsAbstraction false
-            let right = toStringInternal right parenthesizedRight closing
-            let term = $"{left} {right}"
-            if parenthesized then $"({term})" else term
+            toStringCPS left parenthesizedLeft false (fun leftStr ->
+                toStringCPS right parenthesizedRight closing (fun rightStr ->
+                    let termStr = $"{leftStr} {rightStr}"
+                    if parenthesized then $"({termStr})" else termStr
+                    |> cont
+                )
+            )
         | Abstraction (Name var, term) ->
-            let term = $"\\{var}.{toStringInternal term false true}"
-            if parenthesized then $"({term})" else term
+            toStringCPS term false true (fun termStr ->
+                let termStr = $"\\{var}.{termStr}"
+                if parenthesized then $"({termStr})" else termStr
+                |> cont
+            )
 
     /// Get a string representation of the given lambda `term`.
     let toString (term: LambdaTerm) =
-        toStringInternal term false true
+        toStringCPS term false true id
 
-    /// Get a string representation of the given lambda `term` and surround it with brackets if necessary.
+    /// Get a string representation of the given lambda `term` surrounded with brackets if it's not a variable.
     let toStringParenthesized (term: LambdaTerm) =
-        toStringInternal term true true
+        toStringCPS term true true id

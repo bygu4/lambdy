@@ -75,7 +75,7 @@ type Interpreter private (stream: Stream, interactive: bool, ?verbose: bool, ?li
 
         /// Interpret the given `primary` expression representation.
         let interpretExpression (primary: Primary.Expression) =
-            match buildAST_Expression primary with
+            match buildExpressionAST primary with
             | Definition (var, term) ->
                 reducer.AddDefinition (var, term)
                 None
