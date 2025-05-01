@@ -68,6 +68,13 @@ let successfulCasesResults: Result<string, string> list list = [
     ];
     [   // Test 8
     ];
+    [   // Test 9
+        Ok "U";
+        Ok "V";
+        Ok "\\f.f V U";
+        Ok "V";
+        Ok "U";
+    ];
 ]
 
 let unsuccessfulCasesResults: Result<string, string> list list = [

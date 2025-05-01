@@ -1,0 +1,12 @@
+let pair = \a b f.f a b
+let T = \ x . \ y . x
+let F = \ x . \ y . y
+let fst = \p.p T
+let snd = \p.p F
+let swap = \p.pair (snd p) (fst p)
+
+fst (pair U V)
+snd (pair U V)
+swap (pair U V)
+fst (swap (pair U V))
+snd (swap (pair U V))
