@@ -7,104 +7,135 @@ open LambdaInterpreter
 open LambdaInterpreter.Syntax
 open AST
 
-let id var = Abstraction (var, Variable var)
-let omega var = Abstraction (var, Application (Variable var, Variable var))
-let Omega var = Application (omega var, omega var)
+let var = Name >> Variable
+
+let I = Abstraction (Name "x", var "x")
+let omega = Abstraction (Name "x", Application (var "x", var "x"))
+let Omega = Application (omega, omega)
+let T = Abstraction (Name "x", Abstraction (Name "y", var "x"))
+let F = Abstraction (Name "x", Abstraction (Name "y", var "y"))
+let y = Abstraction (Name "x", Application (var "f", Application (var "x", var "x")))
+let Y = Abstraction (Name "f", Application (y, y));
 
 let terms =
     [
         // No redexes
-        Variable (Name "x");
-        Application (Variable (Name "x"), Variable (Name "y"));
-        Abstraction (Name "x", Variable (Name "y"));
-        omega (Name "x");
+        var "x";
+        Application (var "x", var "y");
+        Abstraction (Name "x", var "y");
+        omega;
 
         // Simple reduction
-        Application (omega (Name "x"), Variable (Name "y"));
-        Application (Abstraction (Name "x", Variable (Name "x")), Variable (Name "z"));
-        Application (Abstraction (Name "x", Application (Variable (Name "x"), Variable (Name "y"))), Variable (Name "z"));
-        Application (Abstraction (Name "x", Variable (Name "y")), Omega (Name "x"));
+        Application (omega, var "y");
+        Application (Abstraction (Name "x", var "x"), var "z");
+        Application (Abstraction (Name "x", Application (var "x", var "y")), var "z");
+        Application (Abstraction (Name "x", var "y"), Omega);
 
         // Inner reduction
-        Abstraction (Name "a", Application
-            (Abstraction (Name "b", Application (Variable (Name "b"), Variable (Name "c"))),
-            Variable (Name "x")));
-        Application (Variable (Name "x"), Application
-            (Abstraction (Name "a", omega (Name "y")),
-            Variable (Name "z")));
+        Abstraction (Name "a", Application (Abstraction (Name "b", Application (var "b", var "c")), var "x"));
+        Application (var "x", Application (Abstraction (Name "a", omega), var "z"));
 
         // Multiple variable substitution
         Application (Application
-            (Abstraction (Name "a", Abstraction (Name "b", Application (Variable (Name "a"), Variable (Name "b")))),
-            Variable (Name "x")), Variable (Name "y"));
+            (Abstraction (Name "a", Abstraction (Name "b", Application (var "a", var "b"))),
+            var "x"),
+            var "y");
         Application (Application (Application
-            (Abstraction (Name "a", Abstraction (Name "b", Abstraction (Name "c", Variable (Name "x")))),
-            Variable (Name "y")), Variable (Name "y")), Variable (Name "y"));
+            (Abstraction (Name "a", Abstraction (Name "b", Abstraction (Name "c", var "x"))),
+            var "y"),
+            var "y"),
+            var "y");
+        Application (Application (Application
+            (Abstraction (Name "U", Abstraction (Name "V", Abstraction (Name "W",
+                Abstraction (Name "H", Abstraction (Name "K", var "W"))))),
+            var "a"),
+            var "b"),
+            var "c");
+        Application (var "trololo",
+            Application (Application
+                (Abstraction (Name "x", Abstraction (Name "y", var "x")),
+            var "A"),
+            var "B"));
 
         // Term substitution
-        Application (id (Name "x"), id (Name "y"));
-        Abstraction (Name "a", Application
-            (Abstraction (Name "b", Application (Variable (Name "a"), Variable (Name "b"))),
-            id (Name "x")));
-        Application (id (Name "x"), Application (Variable (Name "x"), Variable (Name "y")));
-        Application
-            (Abstraction (Name "a", Abstraction (Name "b", Application (Variable (Name "a"), Variable (Name "b")))),
-            id (Name "x"));
+        Application (I, I);
+        Abstraction (Name "a", Application (Abstraction (Name "b", Application (var "a", var "b")), I));
+        Application (I, Application (var "x", var "y"));
+        Application (Abstraction (Name "a", Abstraction (Name "b", Application (var "a", var "b"))), I);
+
+        // Nested redex
+        Application (Application (I, Abstraction (Name "x", var "z")), Y);
+        Application (Y, F);
+        Application (var "S", Application (Application (Application (T, var "a"), var "b"), var "S"));
+        Application (Application (I, Application (Application (F, var "x"), I)), var "y");
 
         // Irreducible redex
-        Omega (Name "z");
-        Application (Omega (Name "x"), Omega (Name "y"));
+        Omega;
+        Application (Omega, Omega);
 
         // Alpha conversion required
         Application
-            (Abstraction (Name "x", Abstraction (Name "y", Application (Variable (Name "x"), Variable (Name "y")))),
-            Variable (Name "y"));
+            (Abstraction (Name "x", Abstraction (Name "y", Application (var "x", var "y"))),
+            var "y");
         Application
-            (Abstraction (Name "z'", Abstraction (Name "z", Application (Variable (Name "z"), Variable (Name "z'")))),
-            Variable (Name "z"));
+            (Abstraction (Name "z'", Abstraction (Name "z", Application (var "z", var "z'"))),
+            var "z");
         Application
             (Abstraction (Name "x", Application
-                (Abstraction (Name "y", Application (Variable (Name "x"), Variable (Name "y"))),
-                Variable (Name "x"))),
-            Abstraction (Name "y", Application (Variable (Name "x"), Variable (Name "y"))));
+                (Abstraction (Name "y", Application (var "x", var "y")),
+                var "x")),
+            Abstraction (Name "y", Application (var "x", var "y")));
         Application
             (Abstraction (Name "a", Abstraction (Name "b",
-                Abstraction (Name "c", Application (Variable (Name "a"), Variable (Name "b"))))),
-            Application (Variable (Name "c"), Variable (Name "b")));
+                Abstraction (Name "c", Application (var "a", var "b")))),
+            Application (var "c", var "b"));
     ]
 
 let reducedTerms =
     [
-        Variable (Name "x");
-        Application (Variable (Name "x"), Variable (Name "y"));
-        Abstraction (Name "x", Variable (Name "y"));
-        omega (Name "x");
+        // No redexes
+        var "x";
+        Application (var "x", var "y");
+        Abstraction (Name "x", var "y");
+        omega;
 
-        Application (Variable (Name "y"), Variable (Name "y"));
-        Variable (Name "z");
-        Application (Variable (Name "z"), Variable (Name "y"));
-        Variable (Name "y");
+        // Simple reduction
+        Application (var "y", var "y");
+        var "z";
+        Application (var "z", var "y");
+        var "y";
 
-        Abstraction (Name "a", Application (Variable (Name "x"), Variable (Name "c")));
-        Application (Variable (Name "x"), omega (Name "y"));
+        // Inner reduction
+        Abstraction (Name "a", Application (var "x", var "c"));
+        Application (var "x", omega);
 
-        Application (Variable (Name "x"), Variable (Name "y"));
-        Variable (Name "x");
+        // Multiple variable substitution
+        Application (var "x", var "y");
+        var "x";
+        Abstraction (Name "H", Abstraction (Name "K", var "c"));
+        Application (var "trololo", var "A");
 
-        id (Name "y");
-        Abstraction (Name "a", Application(Variable (Name "a"), id (Name "x")));
-        Application (Variable (Name "x"), Variable (Name "y"));
-        id (Name "b");
+        // Term substitution
+        I;
+        Abstraction (Name "a", Application (var "a", I));
+        Application (var "x", var "y");
+        Abstraction (Name "b", var "b");
 
-        Omega (Name "z");
-        Application (Omega (Name "x"), Omega (Name "y"));
+        // Nested redex
+        var "z";
+        Abstraction (Name "y", var "y");
+        Application (var "S", Application (var "a", var "S"));
+        var "y";
 
-        Abstraction (Name "y'", Application (Variable (Name "y"), Variable (Name "y'")));
-        Abstraction (Name "z''", Application (Variable (Name "z''"), Variable (Name "z")));
-        Application (Variable (Name "x"), Abstraction (Name "y", Application (Variable (Name "x"), Variable (Name "y"))));
-        Abstraction (Name "b'", Abstraction (Name "c'", Application
-            (Application (Variable (Name "c"), Variable (Name "b")),
-            Variable (Name "b'"))));
+        // Irreducible redex
+        Omega;
+        Application (Omega, Omega);
+
+        // Alpha conversion required
+        Abstraction (Name "y'", Application (var "y", var "y'"));
+        Abstraction (Name "z''", Application (var "z''", var "z"));
+        Application (var "x", Abstraction (Name "y", Application (var "x", var "y")));
+        Abstraction (Name "b'", Abstraction (Name "c'", Application (Application (var "c", var "b"), var "b'")));
     ]
 
 let testCases = List.zip terms reducedTerms |> List.map TestCaseData
