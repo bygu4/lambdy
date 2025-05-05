@@ -1,0 +1,23 @@
+let TRUE = \x y.x
+let FALSE = \x y.y
+let IF = \b t f.b t f
+
+let ZERO = \f.\x.x
+let ONE = \f.\x.f x
+let TWO = \f.\x.f (f x)
+let THREE = \f.\x.f (f (f x))
+let FOUR = \f.\x.f (f (f (f x)))
+
+let IS_ZERO = \f.f (\t.FALSE) TRUE
+let PRED = \n f x.n (\g h.h (g f)) (\u.x) \u.u
+let MUL = \m n f.m (n f)
+
+let Y = \f.(\x.f (x x)) (\x.f (x x))
+let STEP = \f n.IF (IS_ZERO n) ONE (MUL n (f (PRED n)))
+let FACT = Y STEP
+
+FACT ZERO
+FACT ONE
+FACT TWO
+FACT THREE
+FACT FOUR

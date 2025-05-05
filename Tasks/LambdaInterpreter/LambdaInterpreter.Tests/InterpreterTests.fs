@@ -85,6 +85,13 @@ let successfulCasesResults: Result<string, string> list list = [
         Ok "\\f.\\x.x";
         Ok "\\f.\\x.f (f (f (f (f (f (f (f x)))))))";
     ];
+    [   // Test 11
+        Ok "\\f.\\x.f x";
+        Ok "\\f.\\x.f x";
+        Ok "\\f.\\x.f (f x)";
+        Ok "\\f.\\x.f (f (f (f (f (f x)))))";
+        Ok "\\f.\\x.f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f x)))))))))))))))))))))))";
+    ];
 ]
 
 let unsuccessfulCasesResults: Result<string, string> list list = [

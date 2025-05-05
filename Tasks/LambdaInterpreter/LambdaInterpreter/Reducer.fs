@@ -62,7 +62,8 @@ type Reducer (?verbose: bool) =
         // Our variable is bounded, call continuation.
         | Abstraction (Name x, _) as abs when x = var -> cont abs
 
-        // Check free variables and perform alpha-conversion to avoid capturing.
+        // Obtain free variables of term to make substitution in and term to substitute with.
+        // Perform alpha-conversion if necessary to avoid capturing, then make a substitution.
         | Abstraction (Name x, term) ->
             let freeVarsT = freeVars term
             let freeVarsS = freeVars sub
@@ -98,7 +99,7 @@ type Reducer (?verbose: bool) =
     /// Reduce `term` in CPS using the given `cont`.
     /// Keep track of `depth` of the reduction and throw exception in case of exceeding.
     [<TailCall>]
-    let rec reduceCPS term depth cont =
+    let rec reduceCPS term depth ret cont =
         if depth > MaxDepth then raise <| StackOverflowException MaxDepthExceededMessage
         logger.Log <| Reducing term
         match term with
@@ -108,36 +109,42 @@ type Reducer (?verbose: bool) =
 
         // Reduce the right part of the abstraction and pass it to continuation.
         | Abstraction (var, term) ->
-            reduceCPS term (depth + 1) (fun reducedTerm ->
+            reduceCPS term (depth + 1) false (fun reducedTerm ->
                 Abstraction (var, reducedTerm) |> cont
             )
 
-        // Perform beta-reduction and then reduce the result.
+        // Perform beta-reduction, then check whether the resulting term is an abstraction.
+        // Return if necessary to reduce the outermost redex, otherwise reduce the result.
         | Application (Abstraction (var, term) as abs, sub) as source ->
             logger.Log <| BetaReduction (source, term, var, sub)
             let term = substitute term (var, sub)
-            if term <> source then reduceCPS term depth cont
-            else
-                logger.Log <| UnableToReduce term
-                reduceCPS abs (depth + 1) (fun reducedAbs ->
-                    reduceCPS sub (depth + 1) (fun reducedSub ->
-                        Application (reducedAbs, reducedSub) |> cont
+            match term with
+            | Abstraction _ when ret -> cont term
+            | _ ->
+                if term <> source then reduceCPS term depth ret cont
+                else
+                    logger.Log <| UnableToReduce term
+                    reduceCPS abs (depth + 1) false (fun reducedAbs ->
+                        reduceCPS sub (depth + 1) false (fun reducedSub ->
+                            Application (reducedAbs, reducedSub) |> cont
+                        )
                     )
-                )
 
-        // Reduce both parts of the application and pass it to continuation.
+        // Reduce left part of the application first, then check for redex.
+        // Perform beta-reduction if left part was reduced to an abstraction, otherwise reduce the right part.
         | Application (left, right) ->
-            reduceCPS left (depth + 1) (fun reducedLeft ->
-                reduceCPS right (depth + 1) (fun reducedRight ->
-                    match reducedLeft with
-                    | Abstraction _ -> reduceCPS (Application (reducedLeft, reducedRight)) depth cont
-                    | _ -> Application (reducedLeft, reducedRight) |> cont
-                )
+            reduceCPS left (depth + 1) true (fun reducedLeft ->
+                match reducedLeft with
+                | Abstraction _ -> reduceCPS (Application (reducedLeft, right)) depth ret cont
+                | _ ->
+                    reduceCPS right (depth + 1) false (fun reducedRight ->
+                        Application (reducedLeft, reducedRight) |> cont
+                    )
             )
 
     /// Perform beta-reduction of the given lambda `term`.
     /// Perform alpha-conversion if necessary.
-    let reduce term = reduceCPS term 0 id
+    let reduce term = reduceCPS term 0 false id
 
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.
