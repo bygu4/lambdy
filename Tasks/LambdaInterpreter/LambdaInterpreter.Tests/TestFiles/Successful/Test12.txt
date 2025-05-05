@@ -1,0 +1,25 @@
+let zero = \f x. x
+let one = \f x. f x
+let two = \f x. f (f x)
+let three = \f x. f (f (f x))
+let four = \f x. f (f (f (f x)))
+let five = \f x. f (f (f (f (f x))))
+
+let true = \x y. x
+let false = \x y. y
+let if = \b t f. b t f
+
+let is_zero = \n. n (\t.false) true
+let pred = \n f x. n (\g h. h (g f)) (\u. x) \u. u
+let sum = \m n f x. m f (n f x)
+
+let Y = \f. (\x. f (x x)) (\x. f (x x))
+let step = \f n. if (is_zero n) one (if (is_zero (pred n)) one (sum (f (pred n)) (f (pred (pred n)))))
+let fib = Y step
+
+fib zero
+fib one
+fib two
+fib three
+fib four
+fib five
