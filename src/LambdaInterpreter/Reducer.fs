@@ -33,14 +33,11 @@ type Reducer(?verbose: bool) =
     let freeVars term = freeVarsCPS term id
 
     /// Get a variable, starting with `prefix`, that is not in `freeVars`.
-    let nextFreeVar prefix freeVars =
-        let rec nextFreeVar prefix freeVars =
-            if not (Set.contains prefix freeVars) then
-                prefix
-            else
-                nextFreeVar (prefix + "'") freeVars in
-
-        nextFreeVar prefix freeVars
+    let rec nextFreeVar prefix freeVars =
+        if not (Set.contains prefix freeVars) then
+            prefix
+        else
+            nextFreeVar (prefix + "'") freeVars
 
     /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
     /// Use CPS with the given `cont`.
