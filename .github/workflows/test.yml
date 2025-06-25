@@ -1,0 +1,21 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test-Windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+      - name: Build and run tests
+        run: dotnet test src/LambdaInterpreter.sln
+  test-Ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+      - name: Build and run tests
+        run: dotnet test src/LambdaInterpreter.sln
