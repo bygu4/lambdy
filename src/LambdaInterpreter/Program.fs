@@ -23,7 +23,7 @@ let printHeaderWithHelp () =
 let printMessage (color: ConsoleColor) (message: string) =
     Console.ForegroundColor <- color
     printfn "%s" message
-    Console.ResetColor ()
+    Console.ResetColor()
 
 /// Print the result of interpretation according to the given `output` using the given color `scheme`.
 let handleOutput (Color success, Color error) (output: Result<string, string>) =
@@ -31,7 +31,7 @@ let handleOutput (Color success, Color error) (output: Result<string, string>) =
     | Ok result -> printMessage success result
     | Error message -> printMessage error message
 
-let options = Options.GetFromArgs ()
+let options = Options.GetFromArgs()
 
 if options.Help then
     printHeaderWithHelp ()
@@ -44,18 +44,22 @@ if options.Error then
 let interpreter =
     match options.SourceFile with
     | Some path ->
-        try Interpreter.StartOnFile (path, options.Verbose, options.LineNumber)
-        with :? IOException | :? UnauthorizedAccessException as ex ->
+        try
+            Interpreter.StartOnFile(path, options.Verbose, options.LineNumber)
+        with
+        | :? IOException
+        | :? UnauthorizedAccessException as ex ->
             printMessage defaultErrorColor ex.Message
             exit <| int ExitCode.FileNotFound
     | None -> Interpreter.StartInteractive options.Verbose
 
 using interpreter (fun interpreter ->
     let colorScheme = getColorScheme interpreter
-    if interpreter.IsInteractive then printHeaderWithHelpSuggestion ()
 
-    for output in interpreter.RunToEnd () do
+    if interpreter.IsInteractive then
+        printHeaderWithHelpSuggestion ()
+
+    for output in interpreter.RunToEnd() do
         handleOutput colorScheme output
 
-    getExitCode interpreter |> int |> exit
-)
+    getExitCode interpreter |> int |> exit)

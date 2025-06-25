@@ -20,5 +20,7 @@ module ColorScheme =
 
     /// Get the color scheme of the app according to the state of the given `interpreter`.
     let getColorScheme (interpreter: Interpreter) =
-        if interpreter.IsInteractive then Color ConsoleColor.Green, Color ConsoleColor.Yellow
-        else Color ConsoleColor.Green, Color ConsoleColor.Red
+        if interpreter.IsInteractive then
+            Color ConsoleColor.Green, Color ConsoleColor.Yellow
+        else
+            Color ConsoleColor.Green, Color ConsoleColor.Red

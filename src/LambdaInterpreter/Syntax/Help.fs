@@ -11,7 +11,8 @@ module Help =
 
     /// Print syntax help to the standard output.
     let printSyntaxHelp () =
-        printfn $"
+        printfn
+            $"
 Syntax:
     variable\t\t {VariablePattern}
     term\t\t {{variable}}|{{abstraction}}|{{application}}|({{term}})

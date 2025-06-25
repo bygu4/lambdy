@@ -12,20 +12,23 @@ module Help =
 
     /// Print header with general info about the app.
     let printHeader () =
-        printfn "
+        printfn
+            "
 Lambda Interpreter
 ------------------
 An interactive lambda term interpreter."
 
     /// Print help suggestion with a corresponding command to the console.
     let printHelpSuggestion () =
-        printfn $"
+        printfn
+            $"
 Type '{Keywords.HelpKeyword}' for more info.
 "
 
     /// Print command line usage help to the console.
     let printUsageHelp () =
-        printfn "
+        printfn
+            "
 It can either be run interactively using the standard input,
 or on a specified source file.
 
@@ -33,11 +36,12 @@ Usage: LambdaInterpreter [path-to-file] [options]"
 
     /// Print command line options help to the console.
     let printOptionsHelp () =
-        printfn $"
+        printfn
+            $"
 Options:
-    {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
-    {String.Join ('|', Options.VerboseArgs)}\t Print detailed interpretation info
-    {String.Join ('|', Options.LineNumberArgs)}\t Print line number with output"
+    {String.Join('|', Options.HelpArgs)}\t\t Display help and exit
+    {String.Join('|', Options.VerboseArgs)}\t Print detailed interpretation info
+    {String.Join('|', Options.LineNumberArgs)}\t Print line number with output"
 
     /// Print syntax help to the console.
     let printSyntaxHelp () = Help.printSyntaxHelp ()

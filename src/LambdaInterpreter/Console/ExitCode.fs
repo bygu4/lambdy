@@ -25,7 +25,11 @@ module ExitCode =
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
     let getExitCode (interpreter: Interpreter) =
-        if interpreter.IsInteractive then ExitCode.Success else
-        if interpreter.SyntaxError then ExitCode.SyntaxError else
-        if interpreter.MaxDepthExceeded then ExitCode.MaxDepthExceeded else
-        ExitCode.Success
+        if interpreter.IsInteractive then
+            ExitCode.Success
+        else if interpreter.SyntaxError then
+            ExitCode.SyntaxError
+        else if interpreter.MaxDepthExceeded then
+            ExitCode.MaxDepthExceeded
+        else
+            ExitCode.Success
