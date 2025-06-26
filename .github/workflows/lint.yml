@@ -11,4 +11,4 @@ jobs:
       - name: Install required tools
         run: dotnet tool restore
       - name: Check with fantomas
-        run: fantomas --verbosity d --check src
+        run: dotnet fantomas --verbosity d --check src
