@@ -1,7 +1,7 @@
 name: build
 on: [push, pull_request]
 jobs:
-  build-Windows:
+  build-for-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -10,7 +10,7 @@ jobs:
           dotnet-version: '9.x'
       - name: Build the project
         run: dotnet build src/LambdaInterpreter.sln
-  build-Ubuntu:
+  build-for-ubuntu:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
