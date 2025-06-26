@@ -12,7 +12,7 @@ jobs:
         with:
           dotnet-version: '9.x'
       - name: Build and run tests
-        run: dotnet test src/LambdaInterpreter.sln
+        run: dotnet test src/Lambdy.sln
   test-for-ubuntu:
     runs-on: ubuntu-latest
     steps:
@@ -22,4 +22,4 @@ jobs:
         with:
           dotnet-version: '9.x'
       - name: Build and run tests
-        run: dotnet test src/LambdaInterpreter.sln
+        run: dotnet test src/Lambdy.sln

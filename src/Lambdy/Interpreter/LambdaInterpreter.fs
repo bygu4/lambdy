@@ -1,15 +1,18 @@
-namespace LambdaInterpreter
+namespace Lambdy.Interpreter
 
 open System
 open System.IO
 open FParsec
 
-open LambdaInterpreter.Syntax
-open AST
-open Parser
+open Lambdy.Syntax.ParseTree
+open Lambdy.Syntax.Parsers
+open Lambdy.Syntax.LambdaTerm
+open Lambdy.Syntax.AST
+open Lambdy.Syntax.Help
+open Lambdy.Interpreter.Reducer
 
 /// Class representing the lambda term interpreter.
-type Interpreter private (stream : Stream, interactive : bool, ?verbose : bool, ?lineNumber : bool) =
+type LambdaInterpreter private (stream : Stream, interactive : bool, ?verbose : bool, ?lineNumber : bool) =
     let reader = new StreamReader (stream)
     let reducer = new Reducer (?verbose = verbose)
     let lineNumber = defaultArg lineNumber false
@@ -21,7 +24,7 @@ type Interpreter private (stream : Stream, interactive : bool, ?verbose : bool, 
     /// Print a pointer indicating the start of input when running an interactive interpreter.
     let tryPrintInputPointer () =
         if interactive then
-            printf "%s" Help.InputPointer
+            printf "%s" InputPointer
 
     /// Add current line number to the given string when running on a source file.
     let tryAddCurrentLine str =
@@ -29,14 +32,14 @@ type Interpreter private (stream : Stream, interactive : bool, ?verbose : bool, 
 
     /// Create an interactive interpreter for the standard console input.
     /// Use `verbose` option to print logs to the console.
-    static member StartInteractive (?verbose : bool) : Interpreter =
-        new Interpreter (Console.OpenStandardInput (), true, ?verbose = verbose)
+    static member StartInteractive (?verbose : bool) : LambdaInterpreter =
+        new LambdaInterpreter (Console.OpenStandardInput (), true, ?verbose = verbose)
 
     /// Create an interpreter to run on a source file at the given `path`.
     /// Use `verbose` option to print logs to the console.
     /// Use `lineNumber` option to add line number to the output.
-    static member StartOnFile (path : string, ?verbose : bool, ?lineNumber : bool) : Interpreter =
-        new Interpreter (File.OpenRead path, false, ?verbose = verbose, ?lineNumber = lineNumber)
+    static member StartOnFile (path : string, ?verbose : bool, ?lineNumber : bool) : LambdaInterpreter =
+        new LambdaInterpreter (File.OpenRead path, false, ?verbose = verbose, ?lineNumber = lineNumber)
 
     /// Whether the interpreter is being run in console.
     member _.IsInteractive : bool = interactive
@@ -69,7 +72,7 @@ type Interpreter private (stream : Stream, interactive : bool, ?verbose : bool, 
     member private _.RunOnNextLineAsync () : Async<Result<string, string> option> =
 
         /// Execute the given special interpreter `command`.
-        let runCommand (command : SpecialCommand) =
+        let runCommand command =
             match command with
             | Reset -> reducer.ResetDefinitions ()
             | Display ->
@@ -77,7 +80,7 @@ type Interpreter private (stream : Stream, interactive : bool, ?verbose : bool, 
                     reducer.DisplayDefinitions ()
             | Help ->
                 if interactive then
-                    Help.printSyntaxHelp ()
+                    printSyntaxHelp ()
             | Clear ->
                 if interactive then
                     Console.Clear ()
@@ -86,7 +89,7 @@ type Interpreter private (stream : Stream, interactive : bool, ?verbose : bool, 
             None
 
         /// Interpret the given `primary` expression representation.
-        let interpretExpression (primary : Primary.Expression) =
+        let interpretExpression primary =
             match buildExpressionAST primary with
             | Definition (var, term) ->
                 reducer.AddDefinition (var, term)

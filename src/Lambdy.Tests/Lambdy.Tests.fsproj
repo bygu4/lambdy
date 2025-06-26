@@ -8,7 +8,7 @@
   <ItemGroup>
     <Compile Include="ParserTests.fs" />
     <Compile Include="ReducerTests.fs" />
-    <Compile Include="InterpreterTests.fs" />
+    <Compile Include="LambdaInterpreterTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
@@ -23,7 +23,7 @@
     <PackageReference Include="FsUnit" Version="7.0.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LambdaInterpreter\LambdaInterpreter.fsproj" />
+    <ProjectReference Include="..\Lambdy\Lambdy.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="TestFiles/**">

@@ -1,21 +1,7 @@
-namespace LambdaInterpreter
+namespace Lambdy.Interpreter.Logger
 
-open LambdaInterpreter.Syntax
-open AST
-
-/// Log record of reducer execution.
-type LogRecord =
-    | StartedReducing of LambdaTerm
-    | DoneReducing
-    | Reducing of LambdaTerm
-    | AlphaConversion of Variable * Variable
-    | BetaReduction of LambdaTerm * LambdaTerm * Variable * LambdaTerm
-    | Substitution of Variable * LambdaTerm
-    | UnableToReduce of LambdaTerm
-    | NewDefinition of Variable * LambdaTerm
-    | DefinitionsReset
-    | DisplayingDefinitions
-    | NoVariablesDefined
+open Lambdy.Syntax.ParseTree
+open Lambdy.Syntax.LambdaTerm
 
 /// Class for managing execution logs.
 /// Use `verbose` option to print logs to the console.

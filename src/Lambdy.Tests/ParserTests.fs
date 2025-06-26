@@ -1,11 +1,10 @@
-module Parser.Tests
+module Parsers.Tests
 
 open NUnit.Framework
 open FsUnit
 open FParsec
 
-open LambdaInterpreter.Syntax
-open Parser
+open Lambdy.Syntax.Parsers
 
 let runTest (testCases : (string * Parser<'a, unit> * int option) seq) =
     for input, parser, expectedPos in testCases do

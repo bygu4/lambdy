@@ -1,9 +1,10 @@
-﻿namespace LambdaInterpreter
+﻿namespace Lambdy.Interpreter.Reducer
 
 open System
 
-open LambdaInterpreter.Syntax
-open AST
+open Lambdy.Syntax.ParseTree
+open Lambdy.Syntax.LambdaTerm
+open Lambdy.Interpreter.Logger
 
 /// Class performing lambda term reduction.
 /// Use `verbose` option to print logs to the console.

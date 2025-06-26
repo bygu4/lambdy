@@ -1,11 +1,11 @@
-module Interpreter.Tests
+module LambdaInterpreter.Tests
 
 open NUnit.Framework
 open FsUnit
 open System
 open System.IO
 
-open LambdaInterpreter
+open Lambdy.Interpreter
 
 let testFilesDir = "TestFiles"
 let successfulCasesPath = Path.Join [| testFilesDir ; "Successful" |]
@@ -188,7 +188,7 @@ let outputsMatch (actual : Result<string, string> list) (expected : Result<strin
 
 [<TestCaseSourceAttribute(nameof (testCases))>]
 let testInterpreter (sourceFile : string, expectedOutput : Result<string, string> list, shouldFail : bool) =
-    let interpreter = Interpreter.StartOnFile sourceFile
+    let interpreter = LambdaInterpreter.StartOnFile sourceFile
     let output = interpreter.RunToEnd () |> Seq.toList
     output |> outputsMatch expectedOutput |> should be True
 

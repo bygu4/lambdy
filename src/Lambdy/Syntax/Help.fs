@@ -1,6 +1,6 @@
-namespace LambdaInterpreter.Syntax
+namespace Lambdy.Syntax
 
-open Literals
+open Lambdy.Syntax.Literals
 
 /// Module for displaying syntax help.
 module Help =

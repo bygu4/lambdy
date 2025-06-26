@@ -1,7 +1,9 @@
-namespace LambdaInterpreter.Console
+namespace Lambdy.Console
 
 open System
-open LambdaInterpreter.Syntax
+
+open Lambdy.Syntax.Literals
+open Lambdy.Syntax.Help
 
 /// Module for displaying command line help.
 module Help =
@@ -22,7 +24,7 @@ An interactive lambda term interpreter."
     let printHelpSuggestion () =
         printfn
             $"
-Type '{Literals.HelpKeyword}' for more info.
+Type '{HelpKeyword}' for more info.
 "
 
     /// Print command line usage help to the console.
@@ -44,4 +46,4 @@ Options:
     {String.Join ('|', Options.LineNumberArgs)}\t Print line number with output"
 
     /// Print syntax help to the console.
-    let printSyntaxHelp () = Help.printSyntaxHelp ()
+    let printSyntaxHelp () = printSyntaxHelp ()

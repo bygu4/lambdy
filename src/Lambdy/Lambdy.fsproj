@@ -9,13 +9,16 @@
 
   <ItemGroup>
     <Compile Include="Syntax/Literals.fs" />
-    <Compile Include="Syntax/Primary.fs" />
+    <Compile Include="Syntax/ParseTree.fs" />
+    <Compile Include="Syntax/Parsers.fs" />
+    <Compile Include="Syntax/LambdaTerm.fs" />
     <Compile Include="Syntax/AST.fs" />
-    <Compile Include="Syntax/Parser.fs" />
     <Compile Include="Syntax/Help.fs" />
-    <Compile Include="Logger.fs" />
-    <Compile Include="Reducer.fs" />
-    <Compile Include="Interpreter.fs" />
+    <Compile Include="Interpreter/Logger/LogRecord.fs" />
+    <Compile Include="Interpreter/Logger/Logger.fs" />
+    <Compile Include="Interpreter/Reducer/Reducer.fs" />
+    <Compile Include="Interpreter/ILambdaInterpreter.fs" />
+    <Compile Include="Interpreter/LambdaInterpreter.fs" />
     <Compile Include="Console/Options.fs" />
     <Compile Include="Console/ColorScheme.fs" />
     <Compile Include="Console/ExitCode.fs" />

@@ -13,12 +13,12 @@ jobs:
         with:
           dotnet-version: '9.x'
       - name: Run tests and collect test coverage
-        run: dotnet test src/LambdaInterpreter.sln /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+        run: dotnet test src/Lambdy.sln /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
       - name: Display test coverage
         uses: ewjoachim/coverage-comment-action@v1
         with:
           GITHUB_TOKEN: ${{ github.token }}
-          COVERAGE_FILE: "src/LambdaInterpreter.Tests/coverage.cobertura.xml"
+          COVERAGE_FILE: "src/Lambdy.Tests/coverage.cobertura.xml"
           BADGE_ENABLED: "true"
           BADGE_FILENAME: test-coverage-badge.json
           MINIMUM_GREEN: 80

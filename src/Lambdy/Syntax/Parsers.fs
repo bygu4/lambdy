@@ -1,12 +1,12 @@
-namespace LambdaInterpreter.Syntax
+namespace Lambdy.Syntax
 
 open FParsec
 
 open Literals
-open Primary
+open ParseTree
 
 /// Module dealing with the source text parsing.
-module Parser =
+module Parsers =
 
     /// Accept 0 or more whitespaces.
     let whitespaceOpt = spaces
@@ -41,8 +41,7 @@ module Parser =
             reply
 
     /// Accept the variable name.
-    let variable : Parser<Variable, unit> =
-        regex VariablePattern >> exceptKeyword |>> Name
+    let variable = regex VariablePattern >> exceptKeyword |>> Name
 
     /// Accept one or more of variable names, separated and optionally surrounded by whitespace.
     let variables = (?<) (sepEndBy1 variable whitespace)
@@ -67,7 +66,7 @@ module Parser =
     let applicationOpt' = attempt (!<operand .>>. applicationOpt) |>> WithContinuation
 
     /// Accept a final abstraction in the application sequence.
-    let applicationOpt'' = attempt !<abstraction |>> FinalAbstraction
+    let applicationOpt'' = attempt !<abstraction |>> ClosingAbstraction
 
     applicationOptRef.Value <- choice [ applicationOpt' ; applicationOpt'' ; preturn Epsilon ]
 
@@ -83,28 +82,25 @@ module Parser =
     let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition
 
     /// Accept a keyword for resetting defined variables.
-    let reset : Parser<Expression, unit> =
-        pstring ResetKeyword >>. preturn (Command Reset)
+    let reset = pstring ResetKeyword >>. preturn (Command Reset)
 
     /// Accept a keyword for displaying defined variables.
-    let display : Parser<Expression, unit> =
-        pstring DisplayKeyword >>. preturn (Command Display)
+    let display = pstring DisplayKeyword >>. preturn (Command Display)
 
     /// Accept a keyword for displaying help.
-    let help : Parser<Expression, unit> = pstring HelpKeyword >>. preturn (Command Help)
+    let help = pstring HelpKeyword >>. preturn (Command Help)
 
     /// Accept a keyword for clearing the console buffer.
-    let clear : Parser<Expression, unit> =
-        pstring ClearKeyword >>. preturn (Command Clear)
+    let clear = pstring ClearKeyword >>. preturn (Command Clear)
 
     /// Accept a keyword for exiting the interpreter.
-    let exit : Parser<Expression, unit> = pstring ExitKeyword >>. preturn (Command Exit)
+    let exit = pstring ExitKeyword >>. preturn (Command Exit)
 
     /// Accept a special interpreter command.
     let command = choice [ reset ; display ; help ; clear ; exit ]
 
     /// Accept an expression or an empty string.
-    let expressionOpt =
+    let expressionOpt : Parser<Expression, unit> =
         choice [ attempt term |>> Result ; definition ; command ; preturn Empty ]
 
     /// Accept an expression or an empty string followed by end of the input.

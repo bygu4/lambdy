@@ -1,11 +1,11 @@
-﻿module Reduction.Tests
+﻿module Reducer.Tests
 
 open NUnit.Framework
 open FsUnit
 
-open LambdaInterpreter
-open LambdaInterpreter.Syntax
-open AST
+open Lambdy.Syntax.ParseTree
+open Lambdy.Syntax.LambdaTerm
+open Lambdy.Interpreter.Reducer
 
 let var = Name >> Variable
 

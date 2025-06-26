@@ -1,6 +1,6 @@
-namespace LambdaInterpreter.Console
+namespace Lambdy.Console
 
-open LambdaInterpreter
+open Lambdy.Interpreter
 
 /// Module containing utility regarding the exit code of the app.
 module ExitCode =
@@ -24,7 +24,7 @@ module ExitCode =
         | MaxDepthExceeded = 4
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
-    let getExitCode (interpreter : Interpreter) =
+    let getExitCode (interpreter : LambdaInterpreter) =
         if interpreter.IsInteractive then
             ExitCode.Success
         else if interpreter.SyntaxError then

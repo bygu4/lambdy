@@ -1,4 +1,4 @@
-namespace LambdaInterpreter.Console
+namespace Lambdy.Console
 
 open System
 

@@ -1,7 +1,8 @@
-namespace LambdaInterpreter.Console
+namespace Lambdy.Console
 
 open System
-open LambdaInterpreter
+
+open Lambdy.Interpreter
 
 /// Module containing utility regarding the console output color.
 module ColorScheme =
@@ -19,7 +20,7 @@ module ColorScheme =
     let defaultErrorColor = ConsoleColor.Red
 
     /// Get the color scheme of the app according to the state of the given `interpreter`.
-    let getColorScheme (interpreter : Interpreter) =
+    let getColorScheme (interpreter : LambdaInterpreter) =
         if interpreter.IsInteractive then
             Color ConsoleColor.Green, Color ConsoleColor.Yellow
         else

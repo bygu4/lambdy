@@ -1,8 +1,8 @@
 open System
 open System.IO
 
-open LambdaInterpreter
-open LambdaInterpreter.Console
+open Lambdy.Interpreter
+open Lambdy.Console
 open ColorScheme
 open ExitCode
 open Help
@@ -45,13 +45,13 @@ let interpreter =
     match options.SourceFile with
     | Some path ->
         try
-            Interpreter.StartOnFile (path, options.Verbose, options.LineNumber)
+            LambdaInterpreter.StartOnFile (path, options.Verbose, options.LineNumber)
         with
         | :? IOException
         | :? UnauthorizedAccessException as ex ->
             printMessage defaultErrorColor ex.Message
             exit <| int ExitCode.FileNotFound
-    | None -> Interpreter.StartInteractive options.Verbose
+    | None -> LambdaInterpreter.StartInteractive options.Verbose
 
 using
     interpreter
