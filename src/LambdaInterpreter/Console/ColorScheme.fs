@@ -7,10 +7,10 @@ open LambdaInterpreter
 module ColorScheme =
 
     /// Color of messages signaling of success.
-    type SuccessColor = Color of ConsoleColor
+    type SuccessColor = | Color of ConsoleColor
 
     /// Color of messages signaling of error.
-    type ErrorColor = Color of ConsoleColor
+    type ErrorColor = | Color of ConsoleColor
 
     /// Color scheme of the console application.
     type ColorScheme = SuccessColor * ErrorColor
@@ -19,7 +19,7 @@ module ColorScheme =
     let defaultErrorColor = ConsoleColor.Red
 
     /// Get the color scheme of the app according to the state of the given `interpreter`.
-    let getColorScheme (interpreter: Interpreter) =
+    let getColorScheme (interpreter : Interpreter) =
         if interpreter.IsInteractive then
             Color ConsoleColor.Green, Color ConsoleColor.Yellow
         else

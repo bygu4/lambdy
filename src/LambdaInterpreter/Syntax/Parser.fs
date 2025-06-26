@@ -30,9 +30,9 @@ module Parser =
     let inputEnd = (?<) eof
 
     /// Modifies the given `reply` to check that its result is not a keyword.
-    let exceptKeyword (reply: Reply<string>) =
+    let exceptKeyword (reply : Reply<string>) =
         if reply.Status = ReplyStatus.Ok && isKeyword reply.Result then
-            Reply(
+            Reply (
                 ReplyStatus.Error,
                 ErrorMessage.Unexpected $"'{reply.Result}' is reserved as a keyword"
                 |> ErrorMessageList
@@ -41,7 +41,7 @@ module Parser =
             reply
 
     /// Accept the variable name.
-    let variable: Parser<Variable, unit> =
+    let variable : Parser<Variable, unit> =
         regex VariablePattern >> exceptKeyword |>> Name
 
     /// Accept one or more of variable names, separated and optionally surrounded by whitespace.
@@ -54,7 +54,7 @@ module Parser =
     let termPar = between ((?>) (pchar '(')) ((?<) (pchar ')')) term
 
     /// Accept an operand in lambda term application.
-    let operand = choice [ variable |>> Variable; termPar |>> Brackets ]
+    let operand = choice [ variable |>> Variable ; termPar |>> Brackets ]
 
     /// Accept a lambda abstraction.
     let abstraction =
@@ -69,12 +69,12 @@ module Parser =
     /// Accept a final abstraction in the application sequence.
     let applicationOpt'' = attempt !<abstraction |>> FinalAbstraction
 
-    applicationOptRef.Value <- choice [ applicationOpt'; applicationOpt''; preturn Epsilon ]
+    applicationOptRef.Value <- choice [ applicationOpt' ; applicationOpt'' ; preturn Epsilon ]
 
     /// Accept a lambda term application or a single operand.
     let application = operand .>>. applicationOpt |>> Application
 
-    termRef.Value <- choice [ application; abstraction ]
+    termRef.Value <- choice [ application ; abstraction ]
 
     /// Accept a variable declaration.
     let declaration = pstring DeclarationKeyword >>. !<variable
@@ -83,29 +83,29 @@ module Parser =
     let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition
 
     /// Accept a keyword for resetting defined variables.
-    let reset: Parser<Expression, unit> =
+    let reset : Parser<Expression, unit> =
         pstring ResetKeyword >>. preturn (Command Reset)
 
     /// Accept a keyword for displaying defined variables.
-    let display: Parser<Expression, unit> =
+    let display : Parser<Expression, unit> =
         pstring DisplayKeyword >>. preturn (Command Display)
 
     /// Accept a keyword for displaying help.
-    let help: Parser<Expression, unit> = pstring HelpKeyword >>. preturn (Command Help)
+    let help : Parser<Expression, unit> = pstring HelpKeyword >>. preturn (Command Help)
 
     /// Accept a keyword for clearing the console buffer.
-    let clear: Parser<Expression, unit> =
+    let clear : Parser<Expression, unit> =
         pstring ClearKeyword >>. preturn (Command Clear)
 
     /// Accept a keyword for exiting the interpreter.
-    let exit: Parser<Expression, unit> = pstring ExitKeyword >>. preturn (Command Exit)
+    let exit : Parser<Expression, unit> = pstring ExitKeyword >>. preturn (Command Exit)
 
     /// Accept a special interpreter command.
-    let command = choice [ reset; display; help; clear; exit ]
+    let command = choice [ reset ; display ; help ; clear ; exit ]
 
     /// Accept an expression or an empty string.
     let expressionOpt =
-        choice [ attempt term |>> Result; definition; command; preturn Empty ]
+        choice [ attempt term |>> Result ; definition ; command ; preturn Empty ]
 
     /// Accept an expression or an empty string followed by end of the input.
     let expression = expressionOpt .>> inputEnd

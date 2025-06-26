@@ -33,12 +33,14 @@ module Keywords =
 
     /// The list of defined keywords.
     let keywords =
-        [ DeclarationKeyword
-          ResetKeyword
-          DisplayKeyword
-          HelpKeyword
-          ClearKeyword
-          ExitKeyword ]
+        [
+            DeclarationKeyword
+            ResetKeyword
+            DisplayKeyword
+            HelpKeyword
+            ClearKeyword
+            ExitKeyword
+        ]
 
     /// Whether the given `str` is reserved as a keyword.
     let isKeyword str = List.contains str keywords

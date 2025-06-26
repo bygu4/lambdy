@@ -24,7 +24,7 @@ module ExitCode =
         | MaxDepthExceeded = 4
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
-    let getExitCode (interpreter: Interpreter) =
+    let getExitCode (interpreter : Interpreter) =
         if interpreter.IsInteractive then
             ExitCode.Success
         else if interpreter.SyntaxError then

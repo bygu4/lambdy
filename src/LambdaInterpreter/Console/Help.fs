@@ -39,9 +39,9 @@ Usage: LambdaInterpreter [path-to-file] [options]"
         printfn
             $"
 Options:
-    {String.Join('|', Options.HelpArgs)}\t\t Display help and exit
-    {String.Join('|', Options.VerboseArgs)}\t Print detailed interpretation info
-    {String.Join('|', Options.LineNumberArgs)}\t Print line number with output"
+    {String.Join ('|', Options.HelpArgs)}\t\t Display help and exit
+    {String.Join ('|', Options.VerboseArgs)}\t Print detailed interpretation info
+    {String.Join ('|', Options.LineNumberArgs)}\t Print line number with output"
 
     /// Print syntax help to the console.
     let printSyntaxHelp () = Help.printSyntaxHelp ()

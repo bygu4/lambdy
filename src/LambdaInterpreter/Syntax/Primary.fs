@@ -1,7 +1,7 @@
 namespace LambdaInterpreter.Syntax
 
 /// A variable of specific name.
-type Variable = Name of string
+type Variable = | Name of string
 
 /// A list of variables.
 type Variables = Variable list
