@@ -22,7 +22,7 @@ An interactive lambda term interpreter."
     let printHelpSuggestion () =
         printfn
             $"
-Type '{Keywords.HelpKeyword}' for more info.
+Type '{Literals.HelpKeyword}' for more info.
 "
 
     /// Print command line usage help to the console.

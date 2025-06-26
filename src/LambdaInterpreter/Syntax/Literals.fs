@@ -1,7 +1,7 @@
 namespace LambdaInterpreter.Syntax
 
-/// Module dealing with keyword definitions.
-module Keywords =
+/// Module dealing with literal definitions for the parser.
+module Literals =
 
     /// A regex pattern representing the variable name.
     [<Literal>]

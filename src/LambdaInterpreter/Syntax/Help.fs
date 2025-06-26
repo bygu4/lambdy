@@ -1,6 +1,6 @@
 namespace LambdaInterpreter.Syntax
 
-open Keywords
+open Literals
 
 /// Module for displaying syntax help.
 module Help =

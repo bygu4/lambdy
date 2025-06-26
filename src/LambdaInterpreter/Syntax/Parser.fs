@@ -2,7 +2,7 @@ namespace LambdaInterpreter.Syntax
 
 open FParsec
 
-open Keywords
+open Literals
 open Primary
 
 /// Module dealing with the source text parsing.
