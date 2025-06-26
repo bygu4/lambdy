@@ -5,10 +5,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET of required version
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.x'
-      - name: Install required tools
+      - name: Restore required tools
         run: dotnet tool restore
       - name: Check with fantomas
         run: dotnet fantomas --verbosity d --check src

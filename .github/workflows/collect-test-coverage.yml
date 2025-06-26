@@ -1,0 +1,19 @@
+name: collect-test-coverage
+on: [push, pull_request]
+jobs:
+  collect-test-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET of required version
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+      - name: Run tests and collect test coverage
+        run: dotnet test src/LambdaInterpreter.sln /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+      - name: Display test coverage
+        uses: ewjoachim/coverage-comment-action@v1
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          COVERAGE_FILE: "src/LambdaInterpreter.Tests/coverage.cobertura.xml"
+          BADGE_ENABLED: "false"
