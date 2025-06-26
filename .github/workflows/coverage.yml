@@ -1,4 +1,7 @@
-name: collect-test-coverage
+# This workflow will build the project, run tests and collect test coverage,
+# add coverage report for pull requests or create a coverage badge for the default branch.
+
+name: coverage
 on: [push, pull_request]
 jobs:
   collect-test-coverage:
@@ -16,4 +19,7 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ github.token }}
           COVERAGE_FILE: "src/LambdaInterpreter.Tests/coverage.cobertura.xml"
-          BADGE_ENABLED: "false"
+          BADGE_ENABLED: "true"
+          BADGE_FILENAME: test-coverage-badge.json
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 50

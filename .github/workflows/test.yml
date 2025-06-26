@@ -1,3 +1,5 @@
+# This workflow will build the project and run tests for Ubuntu and Windows.
+
 name: test
 on: [push, pull_request]
 jobs:
