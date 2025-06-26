@@ -1,3 +1,5 @@
+# This workflow will check the quality of code using several analyzers.
+
 name: lint
 on: [push, pull_request]
 jobs:
