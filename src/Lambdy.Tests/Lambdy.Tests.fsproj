@@ -6,7 +6,7 @@
     <GenerateProgramFile>true</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="ParserTests.fs" />
+    <Compile Include="ParsersTests.fs" />
     <Compile Include="ReducerTests.fs" />
     <Compile Include="LambdaInterpreterTests.fs" />
   </ItemGroup>
