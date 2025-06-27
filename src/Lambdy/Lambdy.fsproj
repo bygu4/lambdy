@@ -15,6 +15,7 @@
     <Compile Include="Syntax/AST.fs" />
     <Compile Include="Syntax/Help.fs" />
     <Compile Include="Interpreter/Logger/LogRecord.fs" />
+    <Compile Include="Interpreter/Logger/ILogger.fs" />
     <Compile Include="Interpreter/Logger/Logger.fs" />
     <Compile Include="Interpreter/Reducer/Reducer.fs" />
     <Compile Include="Interpreter/ILambdaInterpreter.fs" />
