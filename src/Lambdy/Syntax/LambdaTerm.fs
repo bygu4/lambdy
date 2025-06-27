@@ -16,7 +16,7 @@ module LambdaTerm =
     /// Use `closing` to indicate that term is last in the application sequence.
     /// Use CPS with the given `cont`.
     [<TailCall>]
-    let rec private toStringInternal term parenthesized closing cont =
+    let rec private toStringHelper term parenthesized closing cont =
         match term with
         | Variable (Name var) -> cont var
         | Application (left, right) ->
@@ -26,12 +26,12 @@ module LambdaTerm =
             let parenthesizedRight =
                 right.IsApplication || right.IsAbstraction && not closedAbstraction
 
-            toStringInternal
+            toStringHelper
                 left
                 parenthesizedLeft
                 false
                 (fun leftStr ->
-                    toStringInternal
+                    toStringHelper
                         right
                         parenthesizedRight
                         closing
@@ -43,7 +43,7 @@ module LambdaTerm =
                         )
                 )
         | Abstraction (Name var, term) ->
-            toStringInternal
+            toStringHelper
                 term
                 false
                 true
@@ -55,7 +55,7 @@ module LambdaTerm =
                 )
 
     /// Get a string representation of the given lambda `term`.
-    let toString term = toStringInternal term false true id
+    let toString term = toStringHelper term false true id
 
     /// Get a string representation of the given lambda `term` surrounded with brackets if it's not a variable.
-    let toStringParenthesized term = toStringInternal term true true id
+    let toStringParenthesized term = toStringHelper term true true id

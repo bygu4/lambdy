@@ -18,13 +18,13 @@ module AST =
     /// Build AST of a lambda term using the `primary` representation.
     /// Use CPS with the given `cont`.
     [<TailCall>]
-    let rec private buildTermASTInternal primary cont =
+    let rec private buildTermASTHelper primary cont =
 
         /// Convert `primary` operand representation to the lambda term.
         let buildOperandAST primary cont =
             match primary with
             | ParseTree.Variable var -> Variable var |> cont
-            | Brackets term -> buildTermASTInternal term cont
+            | Brackets term -> buildTermASTHelper term cont
 
         /// Build AST of lambda term application using term on the `left` and the rest on `right`.
         let rec buildApplicationAST left right cont =
@@ -36,7 +36,7 @@ module AST =
                         let partial = Application (left, right)
                         buildApplicationAST partial rest cont
                     )
-            | ClosingAbstraction abs -> buildTermASTInternal abs (fun right -> Application (left, right) |> cont)
+            | ClosingAbstraction abs -> buildTermASTHelper abs (fun right -> Application (left, right) |> cont)
             | Epsilon -> cont left
 
         match primary with
@@ -44,15 +44,15 @@ module AST =
             buildOperandAST operand (fun operandAST -> buildApplicationAST operandAST rest cont)
         | ParseTree.Abstraction (head :: tail, term) ->
             if tail.IsEmpty then
-                buildTermASTInternal term (fun termAST -> Abstraction (head, termAST) |> cont)
+                buildTermASTHelper term (fun termAST -> Abstraction (head, termAST) |> cont)
             else
-                buildTermASTInternal
+                buildTermASTHelper
                     (ParseTree.Abstraction (tail, term))
                     (fun termAST -> Abstraction (head, termAST) |> cont)
         | ParseTree.Abstraction ([], _) -> raise (ArgumentException "Abstraction received empty variable list")
 
     /// Build AST of a lambda term using the `primary` representation.
-    let buildTermAST primary = buildTermASTInternal primary id
+    let buildTermAST primary = buildTermASTHelper primary id
 
     /// Build a finalized expression representation from the `primary` one.
     let buildExpressionAST primary =

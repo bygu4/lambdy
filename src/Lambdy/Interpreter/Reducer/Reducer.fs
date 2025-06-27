@@ -23,15 +23,17 @@ type Reducer(?verbose : bool) =
 
     /// Get free variables of the given lambda `term` using CPS with the given `cont`.
     [<TailCall>]
-    let rec freeVarsCPS term cont =
+    let rec freeVarsHelper term cont =
         match term with
         | Variable (Name v) -> set [ v ] |> cont
-        | Abstraction (Name v, term) -> freeVarsCPS term (fun termVars -> Set.remove v termVars |> cont)
+        | Abstraction (Name v, term) -> freeVarsHelper term (fun termVars -> Set.remove v termVars |> cont)
         | Application (left, right) ->
-            freeVarsCPS left (fun leftVars -> freeVarsCPS right (fun rightVars -> Set.union leftVars rightVars |> cont))
+            freeVarsHelper
+                left
+                (fun leftVars -> freeVarsHelper right (fun rightVars -> Set.union leftVars rightVars |> cont))
 
     /// Get free variables of the given lambda `term`.
-    let freeVars term = freeVarsCPS term id
+    let freeVars term = freeVarsHelper term id
 
     /// Get a variable, starting with `prefix`, that is not in `freeVars`.
     let rec nextFreeVar prefix freeVars =
@@ -43,7 +45,7 @@ type Reducer(?verbose : bool) =
     /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
     /// Use CPS with the given `cont`.
     [<TailCall>]
-    let rec substituteCPS term (Name var, sub) cont =
+    let rec substituteHelper term (Name var, sub) cont =
         match term with
 
         // Substitute free occurrence of a matching variable.
@@ -67,27 +69,28 @@ type Reducer(?verbose : bool) =
                 let y = nextFreeVar x (Set.union freeVarsT freeVarsS) |> Name
                 logger.Log <| AlphaConversion (Name x, y)
 
-                substituteCPS
+                substituteHelper
                     term
                     (Name x, Variable y)
                     (fun converted ->
-                        substituteCPS converted (Name var, sub) (fun subsTerm -> Abstraction (y, subsTerm) |> cont)
+                        substituteHelper converted (Name var, sub) (fun subsTerm -> Abstraction (y, subsTerm) |> cont)
                     )
             else
-                substituteCPS term (Name var, sub) (fun subsTerm -> Abstraction (Name x, subsTerm) |> cont)
+                substituteHelper term (Name var, sub) (fun subsTerm -> Abstraction (Name x, subsTerm) |> cont)
 
         // Make substitution in both parts of the application.
         | Application (left, right) ->
-            substituteCPS
+            substituteHelper
                 left
                 (Name var, sub)
                 (fun subsLeft ->
-                    substituteCPS right (Name var, sub) (fun subsRight -> Application (subsLeft, subsRight) |> cont)
+                    substituteHelper right (Name var, sub) (fun subsRight -> Application (subsLeft, subsRight) |> cont)
                 )
 
     /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
     /// Perform alpha-conversion if necessary.
-    let substitute term (Name var, sub) = substituteCPS term (Name var, sub) id
+    let substitute term (Name var, sub) =
+        substituteHelper term (Name var, sub) id
 
     /// Substitute variables in `term` according to the given `subs` pair sequence.
     let substituteMany term subs = subs |> Seq.fold substitute term
@@ -95,7 +98,7 @@ type Reducer(?verbose : bool) =
     /// Reduce `term` in CPS using the given `cont`.
     /// Keep track of `depth` of the reduction and throw exception in case of exceeding.
     [<TailCall>]
-    let rec reduceCPS term depth ret cont =
+    let rec reduceHelper term depth ret cont =
         if depth > MaxDepth then
             raise <| StackOverflowException MaxDepthExceededMessage
 
@@ -108,7 +111,7 @@ type Reducer(?verbose : bool) =
 
         // Reduce the right part of the abstraction and pass it to continuation.
         | Abstraction (var, term) ->
-            reduceCPS term (depth + 1) false (fun reducedTerm -> Abstraction (var, reducedTerm) |> cont)
+            reduceHelper term (depth + 1) false (fun reducedTerm -> Abstraction (var, reducedTerm) |> cont)
 
         // Perform beta-reduction, then check whether the resulting term is an abstraction.
         // Return if necessary to reduce the outermost redex, otherwise reduce the result.
@@ -120,16 +123,16 @@ type Reducer(?verbose : bool) =
             | Abstraction _ when ret -> cont term
             | _ ->
                 if term <> source then
-                    reduceCPS term depth ret cont
+                    reduceHelper term depth ret cont
                 else
                     logger.Log <| UnableToReduce term
 
-                    reduceCPS
+                    reduceHelper
                         abs
                         (depth + 1)
                         false
                         (fun reducedAbs ->
-                            reduceCPS
+                            reduceHelper
                                 sub
                                 (depth + 1)
                                 false
@@ -139,15 +142,15 @@ type Reducer(?verbose : bool) =
         // Reduce left part of the application first, then check for redex.
         // Perform beta-reduction if left part was reduced to an abstraction, otherwise reduce the right part.
         | Application (left, right) ->
-            reduceCPS
+            reduceHelper
                 left
                 (depth + 1)
                 true
                 (fun reducedLeft ->
                     match reducedLeft with
-                    | Abstraction _ -> reduceCPS (Application (reducedLeft, right)) depth ret cont
+                    | Abstraction _ -> reduceHelper (Application (reducedLeft, right)) depth ret cont
                     | _ ->
-                        reduceCPS
+                        reduceHelper
                             right
                             (depth + 1)
                             false
@@ -156,7 +159,7 @@ type Reducer(?verbose : bool) =
 
     /// Perform beta-reduction of the given lambda `term`.
     /// Perform alpha-conversion if necessary.
-    let reduce term = reduceCPS term 0 false id
+    let reduce term = reduceHelper term 0 false id
 
     /// Perform beta-reduction of the given lambda `term` according to defined variables.
     /// Perform alpha-conversion if necessary.
