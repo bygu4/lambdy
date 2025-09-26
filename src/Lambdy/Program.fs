@@ -19,12 +19,6 @@ let printHeaderWithHelp () =
     printOptionsHelp ()
     printSyntaxHelp ()
 
-/// Print the given `message` to the standard output with the given `color`.
-let printMessage (color : ConsoleColor) (message : string) =
-    Console.ForegroundColor <- color
-    printfn "%s" message
-    Console.ResetColor ()
-
 /// Print the result of interpretation according to the given `output` using the given color `scheme`.
 let handleOutput (Color success, Color error) (output : Result<string, string>) =
     match output with

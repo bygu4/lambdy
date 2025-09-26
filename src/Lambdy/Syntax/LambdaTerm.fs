@@ -2,60 +2,57 @@ namespace Lambdy.Syntax
 
 open Lambdy.Syntax.ParseTree
 
-/// Module containing finalized lambda term definitions with utility.
+// Module containing finalized lambda term definitions.
 module LambdaTerm =
 
     /// The finalized lambda term representation.
     type LambdaTerm =
-        | Variable of Variable
-        | Abstraction of Variable * LambdaTerm
+        | Variable of VariableName
+        | Abstraction of VariableName * LambdaTerm
         | Application of LambdaTerm * LambdaTerm
 
-    /// Get a string representation of the given lambda `term`.
-    /// Use `parenthesized` to surround term with brackets if it's not a variable.
-    /// Use `closing` to indicate that term is last in the application sequence.
-    /// Use CPS with the given `cont`.
-    [<TailCall>]
-    let rec private toStringHelper term parenthesized closing cont =
-        match term with
-        | Variable (Name var) -> cont var
-        | Application (left, right) ->
-            let closedAbstraction = parenthesized || closing
-            let parenthesizedLeft = left.IsAbstraction
+        member this.ToString parenthesize = this.ToString' parenthesize true id
 
-            let parenthesizedRight =
-                right.IsApplication || right.IsAbstraction && not closedAbstraction
+        override this.ToString () = this.ToString false
 
-            toStringHelper
-                left
-                parenthesizedLeft
-                false
-                (fun leftStr ->
-                    toStringHelper
-                        right
-                        parenthesizedRight
-                        closing
-                        (fun rightStr ->
-                            let termStr = $"{leftStr} {rightStr}"
+        /// Get a string representation of the given lambda `term`.
+        /// Use `parenthesize` to surround term with brackets if it's not a variable.
+        /// Use `closing` to indicate that term is last in the application sequence.
+        /// Use CPS with the given `cont`.
+        [<TailCall>]
+        member private this.ToString' parenthesize closing cont =
+            match this with
+            | Variable (Name var) -> cont var
+            | Application (left, right) ->
+                let closedAbstraction = parenthesize || closing
+                let parenthesizedLeft = left.IsAbstraction
 
-                            if parenthesized then $"({termStr})" else termStr
-                            |> cont
-                        )
-                )
-        | Abstraction (Name var, term) ->
-            toStringHelper
-                term
-                false
-                true
-                (fun termStr ->
-                    let termStr = $"\\{var}.{termStr}"
+                let parenthesizedRight =
+                    right.IsApplication || right.IsAbstraction && not closedAbstraction
 
-                    if parenthesized then $"({termStr})" else termStr
-                    |> cont
-                )
+                left.ToString'
+                    parenthesizedLeft
+                    false
+                    (fun leftStr ->
+                        right.ToString'
+                            parenthesizedRight
+                            closing
+                            (fun rightStr ->
+                                let termStr = $"{leftStr} {rightStr}"
 
-    /// Get a string representation of the given lambda `term`.
-    let toString term = toStringHelper term false true id
+                                if parenthesize then $"({termStr})" else termStr
+                                |> cont
+                            )
+                    )
+            | Abstraction (Name var, term) ->
+                term.ToString'
+                    false
+                    true
+                    (fun termStr ->
+                        let termStr = $"\\{var}.{termStr}"
 
-    /// Get a string representation of the given lambda `term` surrounded with brackets if it's not a variable.
-    let toStringParenthesized term = toStringHelper term true true id
+                        if parenthesize then $"({termStr})" else termStr
+                        |> cont
+                    )
+
+    let toString parenthesize (term : LambdaTerm) = term.ToString parenthesize

@@ -13,17 +13,17 @@
     <Compile Include="Syntax/Parsers.fs" />
     <Compile Include="Syntax/LambdaTerm.fs" />
     <Compile Include="Syntax/AST.fs" />
-    <Compile Include="Syntax/Help.fs" />
-    <Compile Include="Interpreter/Logger/LogRecord.fs" />
-    <Compile Include="Interpreter/Logger/ILogger.fs" />
-    <Compile Include="Interpreter/Logger/Logger.fs" />
-    <Compile Include="Interpreter/Reducer/Reducer.fs" />
-    <Compile Include="Interpreter/ILambdaInterpreter.fs" />
+    <Compile Include="Interfaces/ILambdaInterpreter.fs" />
+    <Compile Include="Interfaces/IReducer.fs" />
+    <Compile Include="Interfaces/ILogger.fs" />
+    <Compile Include="Interpreter/IR.fs" />
+    <Compile Include="Interpreter/Reducer.fs" />
     <Compile Include="Interpreter/LambdaInterpreter.fs" />
-    <Compile Include="Console/Options.fs" />
     <Compile Include="Console/ColorScheme.fs" />
     <Compile Include="Console/ExitCode.fs" />
+    <Compile Include="Console/Options.fs" />
     <Compile Include="Console/Help.fs" />
+    <Compile Include="Console/Logger.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

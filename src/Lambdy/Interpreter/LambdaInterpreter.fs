@@ -8,38 +8,27 @@ open Lambdy.Syntax.ParseTree
 open Lambdy.Syntax.Parsers
 open Lambdy.Syntax.LambdaTerm
 open Lambdy.Syntax.AST
-open Lambdy.Syntax.Help
-open Lambdy.Interpreter.Reducer
+open Lambdy.Interfaces
 
 /// Class representing the lambda term interpreter.
-type LambdaInterpreter private (stream : Stream, interactive : bool, ?verbose : bool, ?lineNumber : bool) =
+type LambdaInterpreter private (stream : Stream, interactive : bool, logger : ILogger) =
     let reader = new StreamReader (stream)
-    let reducer = new Reducer (?verbose = verbose)
-    let lineNumber = defaultArg lineNumber false
+    let reducer = new Reducer (logger, 1000000)
 
     let mutable currentLine = 0
     let mutable syntaxError = false
     let mutable maxDepthExceeded = false
 
-    /// Print a pointer indicating the start of input when running an interactive interpreter.
-    let tryPrintInputPointer () =
-        if interactive then
-            printf "%s" InputPointer
-
-    /// Add current line number to the given string when running on a source file.
-    let tryAddCurrentLine str =
-        if lineNumber then $"[Line {currentLine}] {str}" else str
-
     /// Create an interactive interpreter for the standard console input.
     /// Use `verbose` option to print logs to the console.
-    static member StartInteractive (?verbose : bool) : LambdaInterpreter =
-        new LambdaInterpreter (Console.OpenStandardInput (), true, ?verbose = verbose)
+    static member StartInteractive (logger : ILogger) : LambdaInterpreter =
+        new LambdaInterpreter (Console.OpenStandardInput (), true, logger)
 
     /// Create an interpreter to run on a source file at the given `path`.
     /// Use `verbose` option to print logs to the console.
     /// Use `lineNumber` option to add line number to the output.
-    static member StartOnFile (path : string, ?verbose : bool, ?lineNumber : bool) : LambdaInterpreter =
-        new LambdaInterpreter (File.OpenRead path, false, ?verbose = verbose, ?lineNumber = lineNumber)
+    static member StartOnFile (path : string, logger : ILogger) : LambdaInterpreter =
+        new LambdaInterpreter (File.OpenRead path, false, logger)
 
     /// Whether the interpreter is being run in console.
     member _.IsInteractive : bool = interactive
@@ -58,10 +47,10 @@ type LambdaInterpreter private (stream : Stream, interactive : bool, ?verbose : 
     member _.MaxDepthExceeded : bool = maxDepthExceeded
 
     /// Run the interpreter while possible and yield the interpretation results.
-    member self.RunToEnd () : Result<string, string> seq =
+    member this.RunToEnd () : InterpreterOutput seq =
         seq {
-            while self.CanRun do
-                let result = self.RunOnNextLineAsync () |> Async.RunSynchronously
+            while this.CanRun do
+                let result = this.RunOnNextLineAsync () |> Async.RunSynchronously
 
                 match result with
                 | Some output -> yield output
@@ -69,21 +58,21 @@ type LambdaInterpreter private (stream : Stream, interactive : bool, ?verbose : 
         }
 
     /// Analyze the next line in the stream and get the interpretation result.
-    member private _.RunOnNextLineAsync () : Async<Result<string, string> option> =
+    member private _.RunOnNextLineAsync () : Async<InterpreterOutput option> =
 
         /// Execute the given special interpreter `command`.
         let runCommand command =
             match command with
-            | Reset -> reducer.ResetDefinitions ()
+            | Reset -> reducer.ResetBindings ()
             | Display ->
                 if interactive then
-                    reducer.DisplayDefinitions ()
+                    logger.Log <| Interactive (ListBindings reducer.Bindings)
             | Help ->
                 if interactive then
-                    printSyntaxHelp ()
+                    logger.Log <| Interactive SyntaxHelp
             | Clear ->
                 if interactive then
-                    Console.Clear ()
+                    logger.Log <| Interactive Clear
             | Exit -> reader.Close ()
 
             None
@@ -92,20 +81,25 @@ type LambdaInterpreter private (stream : Stream, interactive : bool, ?verbose : 
         let interpretExpression primary =
             match buildExpressionAST primary with
             | Definition (var, term) ->
-                reducer.AddDefinition (var, term)
+                reducer.AddBinding (var, term)
                 None
             | Result term ->
-                try
-                    reducer.Reduce term |> toString |> tryAddCurrentLine |> Result.Ok |> Some
-                with :? StackOverflowException as ex ->
+                match reducer.Reduce term with
+                | Result.Ok _ as result -> (Line currentLine, result) |> Some
+                | _ as err ->
                     maxDepthExceeded <- true
-                    ex.Message |> tryAddCurrentLine |> Result.Error |> Some
+                    (Line currentLine, err) |> Some
             | Command command -> runCommand command
             | Empty -> None
 
+        /// Log a request for input when running an interactive interpreter.
+        let requestInput () =
+            if interactive then
+                logger.Log <| Interactive WaitingForInput
+
         async {
             currentLine <- currentLine + 1
-            tryPrintInputPointer ()
+            requestInput ()
             let! line = reader.ReadLineAsync () |> Async.AwaitTask
             let parserResult = line |> run expression
 
@@ -114,13 +108,18 @@ type LambdaInterpreter private (stream : Stream, interactive : bool, ?verbose : 
                 | Success (expr, _, _) -> interpretExpression expr
                 | Failure (msg, _, _) ->
                     syntaxError <- true
-                    msg |> tryAddCurrentLine |> Result.Error |> Some
+                    (Line currentLine, Result.Error msg) |> Some
         }
-
-    interface IDisposable with
-
-        /// Free resources used by the interpreter.
-        member _.Dispose () = reader.Dispose ()
 
     /// Free resources used by the interpreter.
     member _.Dispose () = reader.Dispose ()
+
+    interface IDisposable with
+        member _.Dispose () = reader.Dispose ()
+
+    interface ILambdaInterpreter with
+        member this.IsInteractive = this.IsInteractive
+        member this.CanRun = this.CanRun
+        member this.SyntaxError = this.SyntaxError
+        member this.MaxDepthExceeded = this.MaxDepthExceeded
+        member this.RunToEnd () = this.RunToEnd ()

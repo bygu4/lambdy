@@ -4,10 +4,10 @@ namespace Lambdy.Syntax
 module ParseTree =
 
     /// A variable of specific name.
-    type Variable = | Name of string
+    type VariableName = | Name of string
 
     /// A list of variables.
-    type Variables = Variable list
+    type VariableNames = VariableName list
 
     /// A special command for managing the interpreter execution.
     type SpecialCommand =
@@ -20,7 +20,7 @@ module ParseTree =
     /// A primary term representation.
     type Term =
         | Application of Operand * OptionalApplication
-        | Abstraction of Variables * Term
+        | Abstraction of VariableNames * Term
 
     /// Optional lambda term application.
     and OptionalApplication =
@@ -30,12 +30,12 @@ module ParseTree =
 
     /// An operand in lambda term application.
     and Operand =
-        | Variable of Variable
+        | Variable of VariableName
         | Brackets of Term
 
     /// An expression to be interpreted.
     type Expression =
-        | Definition of Variable * Term
+        | Definition of VariableName * Term
         | Result of Term
         | Command of SpecialCommand
         | Empty

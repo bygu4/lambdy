@@ -1,10 +1,11 @@
-namespace Lambdy.Interpreter
+namespace Lambdy.Interfaces
+
+open Lambdy.Syntax.LambdaTerm
+
+type InterpretationResult = Result<LambdaTerm, string>
 
 /// The number of line of the source given to the interpreter.
 type LineNumber = | Line of int
-
-/// The result of the interpretation.
-type InterpretationResult = Result<string, string>
 
 /// The output of the interpreter.
 type InterpreterOutput = | Output of LineNumber * InterpretationResult

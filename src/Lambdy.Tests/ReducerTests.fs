@@ -5,7 +5,7 @@ open FsUnit
 
 open Lambdy.Syntax.ParseTree
 open Lambdy.Syntax.LambdaTerm
-open Lambdy.Interpreter.Reducer
+open Lambdy.Interpreter
 
 let var = Name >> Variable
 
