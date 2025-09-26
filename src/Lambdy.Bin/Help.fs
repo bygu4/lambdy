@@ -1,8 +1,8 @@
-namespace Lambdy.Console
+namespace Lambdy.Bin
 
 open System
 
-open Lambdy.Syntax.Literals
+open Lambdy.Lib.Literals
 
 /// Module for displaying command line help.
 module Help =

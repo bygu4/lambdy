@@ -1,9 +1,9 @@
-namespace Lambdy.Syntax
+namespace Lambdy.Lib
 
 open FParsec
 
-open Literals
-open ParseTree
+open Lambdy.Lib.Literals
+open Lambdy.Lib.ParseTree
 
 /// Module dealing with the source text parsing.
 module Parsers =

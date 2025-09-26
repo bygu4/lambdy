@@ -1,17 +1,17 @@
-namespace Lambdy.Syntax
+namespace Lambdy.Lib
 
 open System
 
-open ParseTree
-open LambdaTerm
+open Lambdy.Lib.ParseTree
+open Lambdy.Lib.IR
 
 /// Module dealing with finalized syntax trees of lambda expressions.
 module AST =
 
     /// The finalized expression representation.
     type Expression =
-        | Definition of VariableName * LambdaTerm
-        | Result of LambdaTerm
+        | Definition of VariableName * IR
+        | Result of IR
         | Command of SpecialCommand
         | Empty
 
@@ -21,9 +21,9 @@ module AST =
     let rec private buildTermAST' primary cont =
 
         /// Convert `primary` operand representation to the lambda term.
-        let buildOperandAST primary cont =
+        let rec buildOperandAST primary cont =
             match primary with
-            | ParseTree.Variable var -> Variable var |> cont
+            | ParseTree.Variable var -> variable var |> cont
             | Brackets term -> buildTermAST' term cont
 
         /// Build AST of lambda term application using term on the `left` and the rest on `right`.
@@ -33,10 +33,10 @@ module AST =
                 buildOperandAST
                     operand
                     (fun right ->
-                        let partial = Application (left, right)
+                        let partial = application left right
                         buildApplicationAST partial rest cont
                     )
-            | ClosingAbstraction abs -> buildTermAST' abs (fun right -> Application (left, right) |> cont)
+            | ClosingAbstraction abs -> buildTermAST' abs (fun right -> application left right |> cont)
             | Epsilon -> cont left
 
         match primary with
@@ -44,9 +44,9 @@ module AST =
             buildOperandAST operand (fun operandAST -> buildApplicationAST operandAST rest cont)
         | ParseTree.Abstraction (head :: tail, term) ->
             if tail.IsEmpty then
-                buildTermAST' term (fun termAST -> Abstraction (head, termAST) |> cont)
+                buildTermAST' term (fun termAST -> abstraction head termAST |> cont)
             else
-                buildTermAST' (ParseTree.Abstraction (tail, term)) (fun termAST -> Abstraction (head, termAST) |> cont)
+                buildTermAST' (ParseTree.Abstraction (tail, term)) (fun termAST -> abstraction head termAST |> cont)
         | ParseTree.Abstraction ([], _) -> raise (ArgumentException "Abstraction received empty variable list")
 
     /// Build AST of a lambda term using the `primary` representation.

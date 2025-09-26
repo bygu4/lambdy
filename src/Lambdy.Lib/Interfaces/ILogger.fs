@@ -1,18 +1,19 @@
-namespace Lambdy.Interfaces
+namespace Lambdy.Lib.Interfaces
 
-open Lambdy.Syntax.ParseTree
-open Lambdy.Syntax.LambdaTerm
+open Lambdy.Lib.ParseTree
+open Lambdy.Lib.IR
+open Lambdy.Lib.LambdaTerm
 
 type Interactive =
     | WaitingForInput
     | SyntaxHelp
     | Clear
-    | ListBindings of (VariableName * LambdaTerm) list
+    | ListBindings of (VariableName * IR) list
     | Output of InterpreterOutput
 
 type Reduction =
-    | StartedReducing of LambdaTerm
-    | DoneReducing of LambdaTerm
+    | StartedReducing of IR
+    | DoneReducing of IR
     | CurrentTerm of LambdaTerm
 
 type Transformation =

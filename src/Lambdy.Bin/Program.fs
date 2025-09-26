@@ -1,11 +1,10 @@
 open System
 open System.IO
 
-open Lambdy.Interpreter
-open Lambdy.Console
-open ColorScheme
-open ExitCode
-open Help
+open Lambdy.Lib.LambdaInterpreter
+open Lambdy.Bin.ColorScheme
+open Lambdy.Bin.ExitCode
+open Lambdy.Bin.Help
 
 /// Print header with general info about the app and a help suggestion.
 let printHeaderWithHelpSuggestion () =
@@ -18,12 +17,6 @@ let printHeaderWithHelp () =
     printUsageHelp ()
     printOptionsHelp ()
     printSyntaxHelp ()
-
-/// Print the result of interpretation according to the given `output` using the given color `scheme`.
-let handleOutput (Color success, Color error) (output : Result<string, string>) =
-    match output with
-    | Ok result -> printMessage success result
-    | Error message -> printMessage error message
 
 let options = Options.GetFromArgs ()
 

@@ -1,11 +1,13 @@
-namespace Lambdy.Console
+namespace Lambdy.Bin
 
 open System
 
-open Lambdy.Interpreter
+open Lambdy.Lib.LambdaInterpreter
 
 /// Module containing utility regarding the console output color.
 module ColorScheme =
+
+    // TODO : make it a struct
 
     /// Color of messages signaling of success.
     type SuccessColor = | Color of ConsoleColor

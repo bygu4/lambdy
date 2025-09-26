@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Tailcalls>true</Tailcalls>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ExitCode.fs" />
+    <Compile Include="ColorScheme.fs" />
+    <Compile Include="Options.fs" />
+    <Compile Include="Help.fs" />
+    <Compile Include="Logger.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lambdy.Lib\Lambdy.Lib.fsproj" />
+  </ItemGroup>
+
+</Project>

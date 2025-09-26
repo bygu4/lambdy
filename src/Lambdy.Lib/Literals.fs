@@ -1,4 +1,4 @@
-namespace Lambdy.Syntax
+namespace Lambdy.Lib
 
 /// Module dealing with literal definitions for the parser.
 module Literals =

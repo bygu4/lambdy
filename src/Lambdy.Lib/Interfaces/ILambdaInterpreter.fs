@@ -1,6 +1,6 @@
-namespace Lambdy.Interfaces
+namespace Lambdy.Lib.Interfaces
 
-open Lambdy.Syntax.LambdaTerm
+open Lambdy.Lib.LambdaTerm
 
 type InterpretationResult = Result<LambdaTerm, string>
 

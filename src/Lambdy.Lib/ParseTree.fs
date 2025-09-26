@@ -1,4 +1,4 @@
-namespace Lambdy.Syntax
+namespace Lambdy.Lib
 
 /// Module defining primary syntax constructions.
 module ParseTree =

@@ -23,11 +23,12 @@
     <PackageReference Include="FsUnit" Version="7.0.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Lambdy\Lambdy.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="TestFiles/**">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lambdy.Lib\Lambdy.Lib.fsproj" />
+    <ProjectReference Include="..\Lambdy.Bin\Lambdy.Bin.fsproj" />
   </ItemGroup>
 </Project>

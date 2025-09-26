@@ -1,6 +1,6 @@
-namespace Lambdy.Console
+namespace Lambdy.Bin
 
-open Lambdy.Interpreter
+open Lambdy.Lib.LambdaInterpreter
 
 /// Module containing utility regarding the exit code of the app.
 module ExitCode =
