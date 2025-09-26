@@ -3,6 +3,7 @@ namespace Lambdy.Bin
 open System
 
 open Lambdy.Lib.Literals
+open Lambdy.Bin.Options
 
 /// Module for displaying command line help.
 module Help =
@@ -70,7 +71,7 @@ Examples:
 
 Commands:
 {Indent}{ResetKeyword}\t\t Reset defined variables
-{Indent}{DisplayKeyword}\t\t Display definitions in order of addition
+{Indent}{ScopeKeyword}\t\t Display definitions in order of addition
 {Indent}{HelpKeyword}\t\t Display help
 {Indent}{ClearKeyword}\t\t Clear console buffer
 {Indent}{ExitKeyword}\t\t Stop the execution and exit

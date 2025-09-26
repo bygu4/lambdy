@@ -2,35 +2,37 @@ namespace Lambdy.Lib.Interfaces
 
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
-open Lambdy.Lib.LambdaTerm
 
-type Interactive =
+type Minimal =
     | WaitingForInput
+    | CurrentScope of (VariableName * IR) list
     | SyntaxHelp
-    | Clear
-    | ListBindings of (VariableName * IR) list
-    | Output of InterpreterOutput
+    | ClearBuffer
+    | InterpreterOutput of InterpreterOutput
 
-type Reduction =
+type Normal =
+    | CurrentTerm of IR
+    | Unbinding of VariableName * IR
+    | AlphaConversion of IR * VariableName * VariableName
+    | BetaReduction of IR * IR * VariableName * IR
+
+type Detailed =
     | StartedReducing of IR
+    | CurrentlyReducing of IR
     | DoneReducing of IR
-    | CurrentTerm of LambdaTerm
+    | Substitution of VariableName * IR
+    | NewBinding of VariableName * IR
+    | WasReset
 
-type Transformation =
-    | Substitution of VariableName * LambdaTerm
-    | AlphaConversion of LambdaTerm * VariableName * VariableName
-    | BetaReduction of LambdaTerm * LambdaTerm * VariableName * LambdaTerm
-
-type Binding =
-    | BoundValue of VariableName * LambdaTerm
-    | NewBinding of VariableName * LambdaTerm
-    | ResetBindings
+type Diagnostic =
+    | BoundValue of VariableName * IR
+    | DelayedConversion of IR * VariableName * VariableName
 
 type LogRecord =
-    | Interactive of Interactive
-    | Reduction of Reduction
-    | Transformation of Transformation
-    | Binding of Binding
+    | Minimal of Minimal
+    | Normal of Normal
+    | Detailed of Detailed
+    | Diagnostic of Diagnostic
 
 /// An interface representing a class for managing logs.
 [<Interface>]
@@ -38,3 +40,8 @@ type ILogger =
 
     /// Handle the given log record.
     abstract member Log : LogRecord -> unit
+
+    static member TryLog (logger : ILogger option, record : LogRecord) =
+        match logger with
+        | Some logger -> logger.Log record
+        | None -> ()

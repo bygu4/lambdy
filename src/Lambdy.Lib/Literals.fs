@@ -15,9 +15,9 @@ module Literals =
     [<Literal>]
     let ResetKeyword = "reset"
 
-    /// Keyword for displaying defined variables.
+    /// Keyword for displaying bound variables of current environment.
     [<Literal>]
-    let DisplayKeyword = "display"
+    let ScopeKeyword = "scope"
 
     /// Keyword for displaying help info.
     [<Literal>]
@@ -36,7 +36,7 @@ module Literals =
         [
             DeclarationKeyword
             ResetKeyword
-            DisplayKeyword
+            ScopeKeyword
             HelpKeyword
             ClearKeyword
             ExitKeyword

@@ -7,53 +7,48 @@ open Lambdy.Lib.Interfaces
 
 module Reducer =
 
-    /// Class performing lambda term reduction.
-    /// Use `verbose` option to print logs to the console.
-    type Reducer(logger : ILogger, maxDepth : int) =
+    type Reducer(?maxReductions : int, ?logger : ILogger) =
         let mutable bindings : (VariableName * IR) list = []
 
-        /// Get free variables of the given lambda `term` using CPS with the given `cont`.
-        [<TailCall>]
-        let rec freeVars' strict ir cont =
-            match ir with
-            | Variable (var, Some boundValue) when strict ->
-                freeVars' strict boundValue (fun valueVars -> Set.add var valueVars |> cont)
-            | Variable (var, _) -> set [ var ] |> cont
-            | Abstraction (var, _, term) -> freeVars' strict term (fun termVars -> Set.remove var termVars |> cont)
-            | Application (left, right) ->
-                freeVars'
-                    strict
-                    left
-                    (fun leftVars -> freeVars' strict right (fun rightVars -> Set.union leftVars rightVars |> cont))
+        let bindValue var bindings =
+            match Map.tryFind var bindings with
+            | Some value ->
+                ILogger.TryLog (logger, Diagnostic <| BoundValue (var, value))
+                irVarBound var (Some value)
+            | None -> irVar var
 
-        /// Get free variables of the given lambda `term`.
-        let freeVars strict ir = freeVars' strict ir id
+        let delayConversion term x conv body =
+            match conv with
+            | Some y ->
+                ILogger.TryLog (logger, Diagnostic <| DelayedConversion (term, x, y))
+                irAbsConv x conv body
+            | None -> irAbsConv x conv body
 
-        /// Get a variable, starting with `prefix`, that is not in `freeVars`.
-        [<TailCall>]
-        let rec nextFreeVar (Name prefix as var) freeVars =
-            if not (Set.contains var freeVars) then
-                var
-            else
-                nextFreeVar (Name <| prefix + "'") freeVars
+        let substitute var sub =
+            ILogger.TryLog (logger, Detailed <| Substitution (var, sub))
+            sub
+
+        let unbind var boundValue =
+            ILogger.TryLog (logger, Normal <| Unbinding (var, boundValue))
+            boundValue
 
         [<TailCall>]
-        let rec bindMany' bindings ir cont =
-            match ir with
+        let rec bindMany' bindings term cont =
+            match term with
 
-            | _ when Map.isEmpty bindings -> cont ir
+            | _ when Map.isEmpty bindings -> cont term
 
-            | Variable (x, _) -> Variable (x, Map.tryFind x bindings) |> cont
+            | Variable (x, _) -> bindValue x bindings |> cont
 
-            | Abstraction (x, _, term) ->
+            | Abstraction (x, _, body) ->
                 let bindings = Map.remove x bindings
 
                 if Map.isEmpty bindings then
-                    cont ir
+                    cont term
                 else
 
                 let vars = set <| Map.keys bindings
-                let freeVarsT = freeVars false term
+                let freeVarsT = freeVars false body
 
                 let freeVarsS =
                     Set.intersect vars freeVarsT
@@ -66,31 +61,24 @@ module Reducer =
                     else
                         None
 
-                bindMany' bindings term (fun boundTerm -> Abstraction (x, conv, boundTerm) |> cont)
+                bindMany' bindings body (fun boundBody -> delayConversion term x conv boundBody |> cont)
 
             | Application (left, right) ->
                 bindMany'
                     bindings
                     left
-                    (fun boundLeft ->
-                        bindMany' bindings right (fun boundRight -> Application (boundLeft, boundRight) |> cont)
-                    )
+                    (fun boundLeft -> bindMany' bindings right (fun boundRight -> irApp boundLeft boundRight |> cont))
 
-        let bindMany bindings ir = bindMany' bindings ir id
+        let bindMany bindings term = bindMany' bindings term id
 
-        /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
-        /// Use CPS with the given `cont`.
         [<TailCall>]
-        let rec substitute' var sub ir cont =
-            match ir with
+        let rec substitute' var sub term cont =
+            match term with
 
-            // Substitute free occurrence of a matching variable.
-            | Variable (x, _) when x = var -> cont sub
+            | Variable (x, _) when x = var -> substitute var sub |> cont
 
-            // Obtain free variables of term to make substitution in and term to substitute with.
-            // Perform alpha-conversion if necessary to avoid capturing, then make a substitution.
-            | Abstraction (x, conv, term) when x <> var ->
-                let freeVarsT = freeVars false term
+            | Abstraction (x, conv, body) when x <> var ->
+                let freeVarsT = freeVars false body
                 let freeVarsS = freeVars true sub
 
                 let willSubstitute = Set.contains var freeVarsT
@@ -102,54 +90,42 @@ module Reducer =
                     | None -> false
 
                 if willSubstitute then
-                    let freeVarsT = freeVars true term
+                    let freeVarsT = freeVars true body
                     let y = nextFreeVar x (Set.union freeVarsT freeVarsS)
 
                     if capturedX then
+                        ILogger.TryLog (logger, Normal <| AlphaConversion (term, x, y))
+
                         substitute'
                             x
-                            (Variable (y, None))
-                            term
-                            (fun convTerm ->
-                                substitute' var sub convTerm (fun subsTerm -> Abstraction (y, None, subsTerm) |> cont)
-                            )
+                            (irVar y)
+                            body
+                            (fun convBody -> substitute' var sub convBody (fun subsBody -> irAbs y subsBody |> cont))
                     else
                         let conv = if capturedConv then Some y else conv
-                        substitute' var sub term (fun subsTerm -> Abstraction (x, conv, subsTerm) |> cont)
+                        substitute' var sub body (fun subsBody -> delayConversion term x conv subsBody |> cont)
 
                 else
-                    cont ir
+                    cont term
 
-            // Make substitution in both parts of the application.
             | Application (left, right) ->
                 substitute'
                     var
                     sub
                     left
-                    (fun subsLeft ->
-                        substitute' var sub right (fun subsRight -> Application (subsLeft, subsRight) |> cont)
-                    )
+                    (fun subsLeft -> substitute' var sub right (fun subsRight -> irApp subsLeft subsRight |> cont))
 
-            // Nothing to substitute, call continuation.
-            | _ -> cont ir
+            | _ -> cont term
 
-        /// Substitute free occurrences of variable `var` in `term` with given term `sub`.
-        /// Perform alpha-conversion if necessary.
-        let substitute var sub ir = substitute' var sub ir id
+        let substitute var sub term = substitute' var sub term id
 
-        let substitution var boundValue =
-            logger.Log <| Transformation (Substitution (var, toLambdaTerm boundValue))
-            boundValue
+        let alphaConversion term x y body =
+            ILogger.TryLog (logger, Normal <| AlphaConversion (term, x, y))
+            irAbs y (substitute x (irVar y) body)
 
-        let alphaConversion src term x y =
-            logger.Log <| Transformation (AlphaConversion (toLambdaTerm src, x, y))
-            Abstraction (y, None, substitute x (Variable (y, None)) term)
-
-        let betaReduction src term var sub =
-            logger.Log
-            <| Transformation (BetaReduction (toLambdaTerm src, toLambdaTerm term, var, toLambdaTerm sub))
-
-            substitute var sub term
+        let betaReduction term body var sub =
+            ILogger.TryLog (logger, Normal <| BetaReduction (term, body, var, sub))
+            substitute var sub body
 
         let maybe step =
             function
@@ -158,107 +134,85 @@ module Reducer =
 
         let maybePassTo cont step = maybe step >> cont
 
-        /// Reduce `term` in CPS using the given `cont`.
-        /// Keep track of `depth` of the reduction and throw exception in case of exceeding.
         [<TailCall>]
-        let rec reduce' ret depth ir root cont =
-            if depth > maxDepth then
+        let rec reduce' ret count term root cont =
+            if maxReductions.IsSome && count > maxReductions.Value then
                 cont <| Error "Max recursion depth exceeded during the reduction."
             else
 
-            match ir with
+            match term with
 
-            // Substitute with bound value and then reduce.
-            | Variable (var, Some boundValue) -> reduce' ret depth (substitution var boundValue) root cont
+            | Variable (var, Some boundValue) -> reduce' ret count (unbind var boundValue) root cont
 
-            | Abstraction (x, Some y, term) when not ret -> reduce' ret depth (alphaConversion ir term x y) root cont
+            | Abstraction (x, Some y, body) when not ret -> reduce' ret count (alphaConversion term x y body) root cont
 
-            // Reduce body of the abstraction and pass it to continuation.
-            | Abstraction (var, None, term) when not ret ->
+            | Abstraction (var, None, body) when not ret ->
                 reduce'
                     ret
-                    (depth + 1)
-                    term
-                    (fun term -> Abstraction (var, None, term) |> root)
-                    (maybePassTo cont (fun reducedTerm -> Abstraction (var, None, reducedTerm) |> Ok))
+                    count
+                    body
+                    (fun body -> irAbs var body |> root)
+                    (maybePassTo cont (fun reducedBody -> irAbs var reducedBody |> Ok))
 
-            // Perform beta-reduction, then check whether the resulting term is an abstraction.
-            // Return if necessary to reduce the outermost redex, otherwise reduce the result.
-            | Application (Abstraction (var, _, term), sub) ->
-                reduce' ret depth (betaReduction ir term var sub) root cont
+            | Application (Abstraction (var, _, body), sub) ->
+                reduce' ret (count + 1) (betaReduction term body var sub) root cont
 
-            // Reduce left part of the application first, then check for redex.
-            // Perform beta-reduction if left part was reduced to an abstraction, otherwise reduce the right part.
             | Application (left, right) ->
                 reduce'
                     true
-                    (depth + 1)
+                    count
                     left
-                    (fun left -> Application (left, right))
+                    (fun left -> irApp left right)
                     (maybePassTo
                         cont
                         (fun reducedLeft ->
                             match reducedLeft with
-                            | Abstraction _ -> reduce' ret depth (Application (reducedLeft, right)) root cont
+                            | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
                             | _ ->
                                 reduce'
                                     false
-                                    (depth + 1)
+                                    count
                                     right
-                                    (fun right -> Application (reducedLeft, right) |> root)
-                                    (maybePassTo
-                                        cont
-                                        (fun reducedRight -> Application (reducedLeft, reducedRight) |> Ok))
+                                    (fun right -> irApp reducedLeft right |> root)
+                                    (maybePassTo cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok))
                         ))
 
-            // Nothing to reduce, call continuation.
-            | _ -> cont <| Ok ir
+            | _ -> cont <| Ok term
 
-        /// Perform beta-reduction of the given lambda `term`.
-        /// Perform alpha-conversion if necessary.
-        let reduce ir = reduce' false 0 ir id id
+        let reduce term = reduce' false 0 term id id
 
         [<TailCall>]
-        let rec closure' ir cont =
-            match ir with
-            | Variable (var, None) -> LambdaTerm.Variable var |> cont
-            | Variable (var, Some boundValue) -> closure' (substitution var boundValue) cont
-            | Abstraction (var, None, term) ->
-                closure' term (fun termClosure -> LambdaTerm.Abstraction (var, termClosure) |> cont)
-            | Abstraction (x, Some y, term) -> closure' (alphaConversion ir term x y) cont
+        let rec closure' term cont =
+            match term with
+            | Variable (var, None) -> lamVar var |> cont
+            | Variable (var, Some boundValue) -> closure' (unbind var boundValue) cont
+            | Abstraction (var, None, body) -> closure' body (fun bodyClosure -> lamAbs var bodyClosure |> cont)
+            | Abstraction (x, Some y, body) -> closure' (alphaConversion term x y body) cont
             | Application (left, right) ->
                 closure'
                     left
-                    (fun leftClosure ->
-                        closure' right (fun rightClosure -> LambdaTerm.Application (leftClosure, rightClosure) |> cont)
-                    )
+                    (fun leftClosure -> closure' right (fun rightClosure -> lamApp leftClosure rightClosure |> cont))
 
-        let closure ir = closure' ir id
+        let closure term = closure' term id
 
-        /// Print defined variables to the console in order of addition.
-        member _.Bindings = List.map (fun (var, value) -> var, toLambdaTerm value) bindings
+        member _.Bindings = List.rev bindings
 
-        /// Perform beta-reduction of the given lambda `term` according to defined variables.
-        /// Perform alpha-conversion if necessary.
+        member _.AddBinding (var, value) =
+            let boundValue = bindMany (Map.ofList bindings) value
+            bindings <- (var, boundValue) :: bindings
+
+        member _.ResetBindings () = bindings <- []
+
         member _.Reduce term =
             term
-            |> toIR
             |> bindMany (Map.ofList bindings)
             |> reduce
             |> function
                 | Ok result -> closure result |> Ok
                 | Error msg -> Error msg
 
-        /// Define a `var` to be substituted with the given `term`.
-        member _.AddBinding (var : VariableName, value : LambdaTerm) =
-            let boundValue = toIR value |> bindMany (Map.ofList bindings)
-            bindings <- (var, boundValue) :: bindings
-
-        /// Reset defined variables.
-        member _.ResetBindings () = bindings <- []
-
         interface IReducer with
             member this.Bindings = this.Bindings
-            member this.Reduce term = this.Reduce term
             member this.AddBinding (var, term) = this.AddBinding (var, term)
             member this.ResetBindings () = this.ResetBindings ()
+            member this.Reduce term = this.Reduce term

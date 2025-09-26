@@ -62,19 +62,19 @@ module Logger =
 
         let handleRecord =
             function
-            | Interactive WaitingForInput -> handleWaitingForInput ()
-            | Interactive SyntaxHelp -> handleSyntaxHelp ()
-            | Interactive Clear -> handleClear ()
-            | Interactive (ListBindings bindings) -> handleListBindings bindings
-            | Interactive (Output output) -> handleOutput output
-            | Reduction (StartedReducing term) -> handleStartedReducing term
-            | Reduction (DoneReducing term) -> handleDoneReducing term
-            | Reduction (CurrentTerm term) -> handleCurrentTerm term
-            | Transformation (Substitution (var, sub)) -> handleSubstitution var sub
-            | Transformation (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
-            | Transformation (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
-            | Binding (NewBinding (var, value)) -> handleNewBinding var value
-            | Binding ResetBindings -> handleResetBindings ()
+            | Minimal WaitingForInput -> handleWaitingForInput ()
+            | Minimal SyntaxHelp -> handleSyntaxHelp ()
+            | Minimal ClearBuffer -> handleClear ()
+            | Minimal (CurrentScope bindings) -> handleListBindings bindings
+            | Minimal (Output output) -> handleOutput output
+            | Normal (StartedReducing term) -> handleStartedReducing term
+            | Normal (DoneReducing term) -> handleDoneReducing term
+            | Normal (CurrentTerm term) -> handleCurrentTerm term
+            | Detailed (Substitution (var, sub)) -> handleSubstitution var sub
+            | Detailed (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
+            | Detailed (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
+            | Diagnostic (NewBinding (var, value)) -> handleNewBinding var value
+            | Diagnostic WasReset -> handleResetBindings ()
 
         member _.Log = handleRecord
 

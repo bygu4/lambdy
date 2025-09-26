@@ -21,7 +21,7 @@ module ExitCode =
         | SyntaxError = 3
 
         /// Max allowed depth of recursion exceeded during the source file term reduction.
-        | MaxDepthExceeded = 4
+        | ReductionFailed = 4
 
     /// Get the exit code of the program according to the state of the given `interpreter`.
     let getExitCode (interpreter : LambdaInterpreter) =
@@ -29,7 +29,7 @@ module ExitCode =
             ExitCode.Success
         else if interpreter.SyntaxError then
             ExitCode.SyntaxError
-        else if interpreter.MaxDepthExceeded then
-            ExitCode.MaxDepthExceeded
+        else if interpreter.ReductionFailed then
+            ExitCode.ReductionFailed
         else
             ExitCode.Success

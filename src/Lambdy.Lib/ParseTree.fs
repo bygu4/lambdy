@@ -12,7 +12,7 @@ module ParseTree =
     /// A special command for managing the interpreter execution.
     type SpecialCommand =
         | Reset
-        | Display
+        | Scope
         | Help
         | Clear
         | Exit

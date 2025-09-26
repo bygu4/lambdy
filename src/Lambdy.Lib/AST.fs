@@ -21,9 +21,9 @@ module AST =
     let rec private buildTermAST' primary cont =
 
         /// Convert `primary` operand representation to the lambda term.
-        let rec buildOperandAST primary cont =
+        let buildOperandAST primary cont =
             match primary with
-            | ParseTree.Variable var -> variable var |> cont
+            | ParseTree.Variable var -> irVar var |> cont
             | Brackets term -> buildTermAST' term cont
 
         /// Build AST of lambda term application using term on the `left` and the rest on `right`.
@@ -33,20 +33,20 @@ module AST =
                 buildOperandAST
                     operand
                     (fun right ->
-                        let partial = application left right
+                        let partial = irApp left right
                         buildApplicationAST partial rest cont
                     )
-            | ClosingAbstraction abs -> buildTermAST' abs (fun right -> application left right |> cont)
+            | ClosingAbstraction abs -> buildTermAST' abs (fun right -> irApp left right |> cont)
             | Epsilon -> cont left
 
         match primary with
         | ParseTree.Application (operand, rest) ->
             buildOperandAST operand (fun operandAST -> buildApplicationAST operandAST rest cont)
-        | ParseTree.Abstraction (head :: tail, term) ->
+        | ParseTree.Abstraction (head :: tail, body) ->
             if tail.IsEmpty then
-                buildTermAST' term (fun termAST -> abstraction head termAST |> cont)
+                buildTermAST' body (fun bodyAST -> irAbs head bodyAST |> cont)
             else
-                buildTermAST' (ParseTree.Abstraction (tail, term)) (fun termAST -> abstraction head termAST |> cont)
+                buildTermAST' (ParseTree.Abstraction (tail, body)) (fun absAST -> irAbs head absAST |> cont)
         | ParseTree.Abstraction ([], _) -> raise (ArgumentException "Abstraction received empty variable list")
 
     /// Build AST of a lambda term using the `primary` representation.

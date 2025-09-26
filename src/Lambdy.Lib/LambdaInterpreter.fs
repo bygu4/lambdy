@@ -7,45 +7,50 @@ open FParsec
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.Parsers
 open Lambdy.Lib.AST
+open Lambdy.Lib.Reducer
 open Lambdy.Lib.Interfaces
 
 module LambdaInterpreter =
 
     /// Class representing the lambda term interpreter.
-    type LambdaInterpreter private (stream : Stream, interactive : bool, logger : ILogger) =
+    type LambdaInterpreter private (stream : Stream, interactive : bool, ?logger : ILogger) =
         let reader = new StreamReader (stream)
-        let reducer = new Reducer (logger, 1000000)
+        let reducer = new Reducer (1000000, ?logger = logger)
 
         let mutable currentLine = 0
         let mutable syntaxError = false
-        let mutable maxDepthExceeded = false
+        let mutable reductionFailed = false
+
+        let logIfInteractive record =
+            if interactive then
+                ILogger.TryLog (logger, record)
 
         /// Create an interactive interpreter for the standard console input.
         /// Use `verbose` option to print logs to the console.
-        static member StartInteractive (logger : ILogger) : LambdaInterpreter =
-            new LambdaInterpreter (Console.OpenStandardInput (), true, logger)
+        static member StartInteractive (?logger : ILogger) =
+            new LambdaInterpreter (Console.OpenStandardInput (), true, ?logger = logger)
 
         /// Create an interpreter to run on a source file at the given `path`.
         /// Use `verbose` option to print logs to the console.
         /// Use `lineNumber` option to add line number to the output.
-        static member StartOnFile (path : string, logger : ILogger) : LambdaInterpreter =
-            new LambdaInterpreter (File.OpenRead path, false, logger)
+        static member StartOnFile (path : string, ?logger : ILogger) =
+            new LambdaInterpreter (File.OpenRead path, false, ?logger = logger)
 
         /// Whether the interpreter is being run in console.
-        member _.IsInteractive : bool = interactive
+        member _.IsInteractive = interactive
 
         /// Whether the current state of the interpreter supports running.
-        member _.CanRun : bool =
+        member _.CanRun =
             if interactive then
                 stream.CanRead
             else
                 stream.CanRead && not reader.EndOfStream
 
         /// Whether a syntax error occurred during the interpretation.
-        member _.SyntaxError : bool = syntaxError
+        member _.SyntaxError = syntaxError
 
         /// Whether max allowed depth of recursion exceeded during the term reduction.
-        member _.MaxDepthExceeded : bool = maxDepthExceeded
+        member _.ReductionFailed = reductionFailed
 
         /// Run the interpreter while possible and yield the interpretation results.
         member this.RunToEnd () : InterpreterOutput seq =
@@ -59,21 +64,15 @@ module LambdaInterpreter =
             }
 
         /// Analyze the next line in the stream and get the interpretation result.
-        member private _.RunOnNextLineAsync () : Async<InterpreterOutput option> =
+        member private _.RunOnNextLineAsync () =
 
             /// Execute the given special interpreter `command`.
             let runCommand command =
                 match command with
                 | Reset -> reducer.ResetBindings ()
-                | Display ->
-                    if interactive then
-                        logger.Log <| Interactive (ListBindings reducer.Bindings)
-                | Help ->
-                    if interactive then
-                        logger.Log <| Interactive SyntaxHelp
-                | Clear ->
-                    if interactive then
-                        logger.Log <| Interactive Clear
+                | Scope -> logIfInteractive (Minimal <| CurrentScope reducer.Bindings)
+                | Help -> logIfInteractive (Minimal SyntaxHelp)
+                | Clear -> logIfInteractive (Minimal ClearBuffer)
                 | Exit -> reader.Close ()
 
                 None
@@ -86,21 +85,16 @@ module LambdaInterpreter =
                     None
                 | Result term ->
                     match reducer.Reduce term with
-                    | Result.Ok _ as result -> (Line currentLine, result) |> Some
+                    | Result.Ok _ as result -> Output (Line currentLine, result) |> Some
                     | _ as err ->
-                        maxDepthExceeded <- true
-                        (Line currentLine, err) |> Some
+                        reductionFailed <- true
+                        Output (Line currentLine, err) |> Some
                 | Command command -> runCommand command
                 | Empty -> None
 
-            /// Log a request for input when running an interactive interpreter.
-            let requestInput () =
-                if interactive then
-                    logger.Log <| Interactive WaitingForInput
-
             async {
                 currentLine <- currentLine + 1
-                requestInput ()
+                logIfInteractive (Minimal WaitingForInput)
                 let! line = reader.ReadLineAsync () |> Async.AwaitTask
                 let parserResult = line |> run expression
 
@@ -109,7 +103,7 @@ module LambdaInterpreter =
                     | Success (expr, _, _) -> interpretExpression expr
                     | Failure (msg, _, _) ->
                         syntaxError <- true
-                        (Line currentLine, Result.Error msg) |> Some
+                        Output (Line currentLine, Result.Error msg) |> Some
             }
 
         /// Free resources used by the interpreter.
@@ -122,5 +116,5 @@ module LambdaInterpreter =
             member this.IsInteractive = this.IsInteractive
             member this.CanRun = this.CanRun
             member this.SyntaxError = this.SyntaxError
-            member this.MaxDepthExceeded = this.MaxDepthExceeded
+            member this.ReductionFailed = this.ReductionFailed
             member this.RunToEnd () = this.RunToEnd ()

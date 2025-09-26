@@ -24,7 +24,7 @@ type ILambdaInterpreter =
     abstract member SyntaxError : bool
 
     /// Whether max allowed depth of recursion exceeded during the term reduction.
-    abstract member MaxDepthExceeded : bool
+    abstract member ReductionFailed : bool
 
     /// Run the interpreter while possible and yield the interpretation results.
     abstract member RunToEnd : unit -> InterpreterOutput seq
