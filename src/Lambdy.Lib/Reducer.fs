@@ -11,6 +11,12 @@ module Reducer =
     type Reducer(?maxReductions : int, ?logger : ILogger) =
         let mutable bindings : (VariableName * IR) list = []
 
+        // ------------- Diagnostic logging --------------------
+
+        let substitute var sub =
+            ILogger.TryLog (logger, Diagnostic <| Substitution (var, sub))
+            sub
+
         let bindValue var bindings =
             match Map.tryFind var bindings with
             | Some value ->
@@ -25,13 +31,7 @@ module Reducer =
                 irAbsConv x conv body
             | None -> irAbsConv x conv body
 
-        let substitute var sub =
-            ILogger.TryLog (logger, Diagnostic <| Substitution (var, sub))
-            sub
-
-        let unbind var boundValue =
-            ILogger.TryLog (logger, Normal <| Unbinding (var, boundValue))
-            boundValue
+        // ------------- Value binding -------------------------
 
         [<TailCall>]
         let rec bindMany' bindings term cont =
@@ -71,6 +71,8 @@ module Reducer =
                     (fun boundLeft -> bindMany' bindings right (fun boundRight -> irApp boundLeft boundRight |> cont))
 
         let bindMany bindings term = bindMany' bindings term id
+
+        // ------------- Substitution --------------------------
 
         [<TailCall>]
         let rec substitute' var sub term cont =
@@ -120,32 +122,49 @@ module Reducer =
 
         let substitute var sub term = substitute' var sub term id
 
-        let alphaConversion term x y body =
+        // ------------- Normal logging ------------------------
+
+        let currentTerm term root =
+            ILogger.TryLog (logger, Normal <| CurrentTerm (root term))
+            term
+
+        let unbind var boundValue root =
+            ILogger.TryLog (logger, Normal <| Unbinding (var, boundValue))
+            let res = boundValue
+            currentTerm res root
+
+        let alphaConversion term x y body root =
             ILogger.TryLog (logger, Normal <| AlphaConversion (term, x, y))
-            irAbs y (substitute x (irVar y) body)
+            let res = irAbs y (substitute x (irVar y) body)
+            currentTerm res root
 
-        let betaReduction term body var sub =
+        let betaReduction term body var sub root =
             ILogger.TryLog (logger, Normal <| BetaReduction (term, body, var, sub))
-            substitute var sub body
+            let res = substitute var sub body
+            currentTerm res root
 
-        let maybe step =
-            function
-            | Ok result -> step result
-            | _ as err -> err
-
-        let maybePassTo cont step = maybe step >> cont
+        // ------------- Reduction -----------------------------
 
         [<TailCall>]
         let rec reduce' ret count term root cont =
+
+            let inline maybe step =
+                function
+                | Ok result -> step result
+                | _ as err -> err
+
+            let inline maybePassTo cont step = maybe step >> cont
+
             if maxReductions.IsSome && count > maxReductions.Value then
                 cont <| Error "Max recursion depth exceeded during the reduction."
             else
 
             match term with
 
-            | Variable (var, Some boundValue) -> reduce' ret count (unbind var boundValue) root cont
+            | Variable (var, Some boundValue) -> reduce' ret count (unbind var boundValue root) root cont
 
-            | Abstraction (x, Some y, body) when not ret -> reduce' ret count (alphaConversion term x y body) root cont
+            | Abstraction (x, Some y, body) when not ret ->
+                reduce' ret count (alphaConversion term x y body root) root cont
 
             | Abstraction (var, None, body) when not ret ->
                 reduce'
@@ -156,14 +175,14 @@ module Reducer =
                     (maybePassTo cont (fun reducedBody -> irAbs var reducedBody |> Ok))
 
             | Application (Abstraction (var, _, body), sub) ->
-                reduce' ret (count + 1) (betaReduction term body var sub) root cont
+                reduce' ret (count + 1) (betaReduction term body var sub root) root cont
 
             | Application (left, right) ->
                 reduce'
                     true
                     count
                     left
-                    (fun left -> irApp left right)
+                    (fun left -> irApp left right |> root)
                     (maybe (fun reducedLeft ->
                         match reducedLeft with
                         | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
@@ -180,31 +199,42 @@ module Reducer =
 
         let reduce term = reduce' false 0 term id id
 
+        // ------------- IR to closure -------------------------
+
         [<TailCall>]
-        let rec closure' term cont =
+        let rec closure' term root cont =
             match term with
             | Variable (var, None) -> lamVar var |> cont
-            | Variable (var, Some boundValue) -> closure' (unbind var boundValue) cont
-            | Abstraction (var, None, body) -> closure' body (fun bodyClosure -> lamAbs var bodyClosure |> cont)
-            | Abstraction (x, Some y, body) -> closure' (alphaConversion term x y body) cont
+            | Variable (var, Some boundValue) -> closure' (unbind var boundValue root) root cont
+            | Abstraction (var, None, body) ->
+                closure' body (fun body -> irAbs var body |> root) (fun bodyClosure -> lamAbs var bodyClosure |> cont)
+            | Abstraction (x, Some y, body) -> closure' (alphaConversion term x y body root) root cont
             | Application (left, right) ->
                 closure'
                     left
-                    (fun leftClosure -> closure' right (fun rightClosure -> lamApp leftClosure rightClosure |> cont))
+                    (fun left -> irApp left right |> root)
+                    (fun leftClosure ->
+                        closure'
+                            right
+                            (fun right -> irApp (toIR leftClosure) right |> root)
+                            (fun rightClosure -> lamApp leftClosure rightClosure |> cont)
+                    )
 
-        let closure term = closure' term id
+        let closure term = closure' term id id
+
+        // ------------- Members -------------------------------
 
         member _.Bindings = List.rev bindings
 
         member _.AddBinding (var, value) =
-            let boundValue = bindMany (Map.ofList bindings) value
+            let boundValue = bindMany (bindings |> List.rev |> Map.ofList) value
             bindings <- (var, boundValue) :: bindings
 
         member _.ResetBindings () = bindings <- []
 
         member _.Reduce term =
             term
-            |> bindMany (Map.ofList bindings)
+            |> bindMany (bindings |> List.rev |> Map.ofList)
             |> reduce
             |> function
                 | Ok result -> closure result |> Ok
