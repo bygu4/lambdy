@@ -3,80 +3,127 @@ namespace Lambdy.Bin
 open System
 
 open Lambdy.Lib.ParseTree
-open Lambdy.Lib.LambdaTerm
-open Lambdy.Lib.Interfaces
+open Lambdy.Lib.IR
+open Lambdy.Lib.Interfaces.ILambdaInterpreter
+open Lambdy.Lib.Interfaces.ILogger
+open Lambdy.Bin.Verbosity
+open Lambdy.Bin.ColorScheme
 open Lambdy.Bin.Help
 
 module Logger =
 
-    /// Class for managing interpreter execution logs.
-    /// Use `verbose` option to print logs to the console.
-    type Logger(?verbose : bool, ?lineNumber : bool) =
-        let verbose = defaultArg verbose false
+    type Logger(colorScheme : ColorScheme, ?verbosity : Verbosity, ?lineNumber : bool) =
+        let verbosity = defaultArg verbosity Verbosity.Minimal
         let lineNumber = defaultArg lineNumber false
 
-        let printColorized color str =
-            Console.ForegroundColor <- color
-            printfn "%s" str
-            Console.ResetColor ()
+        let printLog prefixColor msgColor prefix msg =
+            if prefix <> String.Empty then
+                Logger.PrintfColorized prefixColor $"[{prefix}]: "
+
+            Logger.PrintfnColorized msgColor msg
+
+        let printNormalLog = printLog colorScheme.AccentColor colorScheme.TextColor
+
+        let printDetailedLog = printLog colorScheme.NoteColor colorScheme.TextColor
+
+        let printDiagnosticLog =
+            printLog colorScheme.DiagnosticColor colorScheme.DiagnosticColor
+
+        // ------------- Minimal -------------------------------
 
         let handleWaitingForInput () = printf InputPointer
 
         let handleSyntaxHelp () = printSyntaxHelp ()
 
-        let handleClear () = Console.Clear ()
+        let handleClearBuffer () = Console.Clear ()
 
-        let handleListBindings bindings =
+        let handleCurrentScope bindings =
             let mutable i = 1
 
             for Name var, boundValue in bindings do
-                printfn $"{Indent}{i}) {var} := {boundValue}"
+                printfn $"{Indent}{i}) {var} <- {toString false boundValue}"
                 i <- i + 1
 
-        let handleOutput (InterpreterOutput.Output (Line line, result)) =
-            if lineNumber then
-                printColorized ConsoleColor.Gray $"[Line {line}]: "
+        let handleInterpreterOutput (Output (Line line, result)) =
+            let lineStr = if lineNumber then $"[Line {line}]: " else String.Empty
 
             match result with
-            | Ok result -> printColorized ConsoleColor.Green result
-            | Error message -> printColorized ConsoleColor.Red message
+            | Ok result -> Logger.PrintSuccess (lineStr + Lambdy.Lib.LambdaTerm.toString false result)
+            | Error message -> Logger.PrintError (lineStr + message)
 
-        let handleStartedReducing = ignore
+        // ------------- Normal --------------------------------
 
-        let handleDoneReducing = ignore
+        let handleStartedReducing = toString false >> printfn "%s"
 
-        let handleCurrentTerm = _.ToString() >> printfn "%s"
+        let handleCurrentTerm = toString false >> printfn "%s"
 
-        let handleSubstitution (Name var) sub = printfn $"[subst]: {var} -> {sub}"
+        let handleUnbinding (Name var) term =
+            printNormalLog "subst" $"{var} -> {toString false term}"
 
         let handleAlphaConversion term (Name var) (Name sub) =
-            printfn $"[alpha] ({term}): {var} -> {sub}"
+            printNormalLog "alpha" $"{toString false term}: {var} -> {sub}"
 
-        let handleBetaReduction src (body : LambdaTerm) (Name var) sub =
-            printfn $"[beta]: {src} -> {body.ToString true}[{var} := {sub}]"
+        let handleBetaReduction src body (Name var) sub =
+            printNormalLog "beta" $"{toString false src} -> {toString true body}[{var} := {toString false sub}]"
 
-        let handleNewBinding (Name var) value = printfn $"[bind]: {var} -> {value}"
+        // ------------- Detailed ------------------------------
 
-        let handleResetBindings () =
-            printfn "[reset]: cleared bindings list"
+        let handleCurrentlyReducing term =
+            printfn $"reducing {toString false term} ..."
+
+        let handleNewBinding (Name var) value =
+            printDetailedLog "bind" $"{var} <- {toString false value}"
+
+        let handleWasReset () =
+            printDetailedLog "reset" "cleared current scope"
+
+        // ------------- Diagnostic ----------------------------
+
+        let handleSubstitution (Name var) sub =
+            printDiagnosticLog "subst" $"{var} -> {toString false sub}"
+
+        let handleBoundValue (Name var) value =
+            printDiagnosticLog "bind" $"{var} <- {toString false value}"
+
+        let handleDelayedConversion term (Name var) (Name sub) =
+            printDiagnosticLog "delay" $"{toString false term}: {var} -> {sub}"
 
         let handleRecord =
             function
             | Minimal WaitingForInput -> handleWaitingForInput ()
             | Minimal SyntaxHelp -> handleSyntaxHelp ()
-            | Minimal ClearBuffer -> handleClear ()
-            | Minimal (CurrentScope bindings) -> handleListBindings bindings
-            | Minimal (Output output) -> handleOutput output
+            | Minimal ClearBuffer -> handleClearBuffer ()
+            | Minimal (CurrentScope bindings) -> handleCurrentScope bindings
+            | Minimal (InterpreterOutput output) -> handleInterpreterOutput output
             | Normal (StartedReducing term) -> handleStartedReducing term
-            | Normal (DoneReducing term) -> handleDoneReducing term
             | Normal (CurrentTerm term) -> handleCurrentTerm term
-            | Detailed (Substitution (var, sub)) -> handleSubstitution var sub
-            | Detailed (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
-            | Detailed (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
-            | Diagnostic (NewBinding (var, value)) -> handleNewBinding var value
-            | Diagnostic WasReset -> handleResetBindings ()
+            | Normal (Unbinding (var, term)) -> handleUnbinding var term
+            | Normal (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
+            | Normal (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
+            | Detailed (CurrentlyReducing term) -> handleCurrentlyReducing term
+            | Detailed (NewBinding (var, value)) -> handleNewBinding var value
+            | Detailed WasReset -> handleWasReset ()
+            | Diagnostic (Substitution (var, sub)) -> handleSubstitution var sub
+            | Diagnostic (BoundValue (var, value)) -> handleBoundValue var value
+            | Diagnostic (DelayedConversion (term, var, sub)) -> handleDelayedConversion term var sub
 
-        member _.Log = handleRecord
+        static member PrintSuccess str =
+            Logger.PrintfnColorized defaultSuccessColor str
+
+        static member PrintError str =
+            Logger.PrintfnColorized defaultErrorColor str
+
+        static member private PrintfColorized color str =
+            Console.ForegroundColor <- color
+            printf "%s" str
+            Console.ResetColor ()
+
+        static member private PrintfnColorized color str =
+            Logger.PrintfColorized color (str + "\n")
+
+        member _.Log record =
+            if matchesTargetVerbosity record verbosity then
+                handleRecord record
 
         interface ILogger with
             member this.Log record = this.Log record

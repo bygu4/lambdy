@@ -8,9 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="ExitCode.fs" />
-    <Compile Include="ColorScheme.fs" />
+    <Compile Include="Verbosity.fs" />
     <Compile Include="Options.fs" />
+    <Compile Include="ColorScheme.fs" />
+    <Compile Include="ExitCode.fs" />
     <Compile Include="Help.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Program.fs" />

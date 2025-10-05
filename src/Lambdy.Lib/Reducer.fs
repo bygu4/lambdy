@@ -3,7 +3,8 @@
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.IR
-open Lambdy.Lib.Interfaces
+open Lambdy.Lib.Interfaces.ILogger
+open Lambdy.Lib.Interfaces.IReducer
 
 module Reducer =
 
@@ -25,7 +26,7 @@ module Reducer =
             | None -> irAbsConv x conv body
 
         let substitute var sub =
-            ILogger.TryLog (logger, Detailed <| Substitution (var, sub))
+            ILogger.TryLog (logger, Diagnostic <| Substitution (var, sub))
             sub
 
         let unbind var boundValue =
@@ -163,19 +164,17 @@ module Reducer =
                     count
                     left
                     (fun left -> irApp left right)
-                    (maybePassTo
-                        cont
-                        (fun reducedLeft ->
-                            match reducedLeft with
-                            | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
-                            | _ ->
-                                reduce'
-                                    false
-                                    count
-                                    right
-                                    (fun right -> irApp reducedLeft right |> root)
-                                    (maybePassTo cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok))
-                        ))
+                    (maybe (fun reducedLeft ->
+                        match reducedLeft with
+                        | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
+                        | _ ->
+                            reduce'
+                                false
+                                count
+                                right
+                                (fun right -> irApp reducedLeft right |> root)
+                                (maybePassTo cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok))
+                    ))
 
             | _ -> cont <| Ok term
 

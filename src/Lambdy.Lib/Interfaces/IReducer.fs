@@ -4,20 +4,22 @@ open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
 open Lambdy.Lib.LambdaTerm
 
-type ReductionResult = Result<LambdaTerm, string>
+module IReducer =
 
-/// An interface representing a class handling the lambda term reduction logic.
-[<Interface>]
-type IReducer =
+    type ReductionResult = Result<LambdaTerm, string>
 
-    // Get list of defined variables.
-    abstract member Bindings : (VariableName * IR) list
+    /// An interface representing a class handling the lambda term reduction logic.
+    [<Interface>]
+    type IReducer =
 
-    // Perform beta-reduction of the given lambda term according to defined variables.
-    abstract member Reduce : IR -> ReductionResult
+        // Get list of defined variables.
+        abstract member Bindings : (VariableName * IR) list
 
-    // Define a variable to be substituted with the given term.
-    abstract member AddBinding : VariableName * IR -> unit
+        // Perform beta-reduction of the given lambda term according to defined variables.
+        abstract member Reduce : IR -> ReductionResult
 
-    // Clear the list of defined variables.
-    abstract member ResetBindings : unit -> unit
+        // Define a variable to be substituted with the given term.
+        abstract member AddBinding : VariableName * IR -> unit
+
+        // Clear the list of defined variables.
+        abstract member ResetBindings : unit -> unit

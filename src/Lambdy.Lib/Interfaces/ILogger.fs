@@ -2,46 +2,48 @@ namespace Lambdy.Lib.Interfaces
 
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
+open Lambdy.Lib.Interfaces.ILambdaInterpreter
 
-type Minimal =
-    | WaitingForInput
-    | CurrentScope of (VariableName * IR) list
-    | SyntaxHelp
-    | ClearBuffer
-    | InterpreterOutput of InterpreterOutput
+module ILogger =
 
-type Normal =
-    | CurrentTerm of IR
-    | Unbinding of VariableName * IR
-    | AlphaConversion of IR * VariableName * VariableName
-    | BetaReduction of IR * IR * VariableName * IR
+    type Minimal =
+        | WaitingForInput
+        | CurrentScope of (VariableName * IR) list
+        | SyntaxHelp
+        | ClearBuffer
+        | InterpreterOutput of InterpreterOutput
 
-type Detailed =
-    | StartedReducing of IR
-    | CurrentlyReducing of IR
-    | DoneReducing of IR
-    | Substitution of VariableName * IR
-    | NewBinding of VariableName * IR
-    | WasReset
+    type Normal =
+        | StartedReducing of IR
+        | CurrentTerm of IR
+        | Unbinding of VariableName * IR
+        | AlphaConversion of IR * VariableName * VariableName
+        | BetaReduction of IR * IR * VariableName * IR
 
-type Diagnostic =
-    | BoundValue of VariableName * IR
-    | DelayedConversion of IR * VariableName * VariableName
+    type Detailed =
+        | CurrentlyReducing of IR
+        | NewBinding of VariableName * IR
+        | WasReset
 
-type LogRecord =
-    | Minimal of Minimal
-    | Normal of Normal
-    | Detailed of Detailed
-    | Diagnostic of Diagnostic
+    type Diagnostic =
+        | Substitution of VariableName * IR
+        | BoundValue of VariableName * IR
+        | DelayedConversion of IR * VariableName * VariableName
 
-/// An interface representing a class for managing logs.
-[<Interface>]
-type ILogger =
+    type LogRecord =
+        | Minimal of Minimal
+        | Normal of Normal
+        | Detailed of Detailed
+        | Diagnostic of Diagnostic
 
-    /// Handle the given log record.
-    abstract member Log : LogRecord -> unit
+    /// An interface representing a class for managing logs.
+    [<Interface>]
+    type ILogger =
 
-    static member TryLog (logger : ILogger option, record : LogRecord) =
-        match logger with
-        | Some logger -> logger.Log record
-        | None -> ()
+        /// Handle the given log record.
+        abstract member Log : LogRecord -> unit
+
+        static member TryLog (logger : ILogger option, record : LogRecord) =
+            match logger with
+            | Some logger -> logger.Log record
+            | None -> ()

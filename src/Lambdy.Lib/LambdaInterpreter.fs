@@ -8,7 +8,8 @@ open Lambdy.Lib.ParseTree
 open Lambdy.Lib.Parsers
 open Lambdy.Lib.AST
 open Lambdy.Lib.Reducer
-open Lambdy.Lib.Interfaces
+open Lambdy.Lib.Interfaces.ILogger
+open Lambdy.Lib.Interfaces.ILambdaInterpreter
 
 module LambdaInterpreter =
 
@@ -59,7 +60,9 @@ module LambdaInterpreter =
                     let result = this.RunOnNextLineAsync () |> Async.RunSynchronously
 
                     match result with
-                    | Some output -> yield output
+                    | Some output ->
+                        ILogger.TryLog (logger, Minimal <| InterpreterOutput output)
+                        yield output
                     | None -> ()
             }
 
@@ -69,7 +72,9 @@ module LambdaInterpreter =
             /// Execute the given special interpreter `command`.
             let runCommand command =
                 match command with
-                | Reset -> reducer.ResetBindings ()
+                | Reset ->
+                    reducer.ResetBindings ()
+                    ILogger.TryLog (logger, Detailed WasReset)
                 | Scope -> logIfInteractive (Minimal <| CurrentScope reducer.Bindings)
                 | Help -> logIfInteractive (Minimal SyntaxHelp)
                 | Clear -> logIfInteractive (Minimal ClearBuffer)
@@ -82,8 +87,11 @@ module LambdaInterpreter =
                 match buildExpressionAST primary with
                 | Definition (var, term) ->
                     reducer.AddBinding (var, term)
+                    ILogger.TryLog (logger, Detailed <| NewBinding (var, term))
                     None
                 | Result term ->
+                    ILogger.TryLog (logger, Normal <| StartedReducing term)
+
                     match reducer.Reduce term with
                     | Result.Ok _ as result -> Output (Line currentLine, result) |> Some
                     | _ as err ->

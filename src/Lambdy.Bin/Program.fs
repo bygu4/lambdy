@@ -2,9 +2,12 @@ open System
 open System.IO
 
 open Lambdy.Lib.LambdaInterpreter
-open Lambdy.Bin.ColorScheme
+open Lambdy.Bin.Verbosity
 open Lambdy.Bin.ExitCode
+open Lambdy.Bin.ColorScheme
+open Lambdy.Bin.Options
 open Lambdy.Bin.Help
+open Lambdy.Bin.Logger
 
 /// Print header with general info about the app and a help suggestion.
 let printHeaderWithHelpSuggestion () =
@@ -25,31 +28,29 @@ if options.Help then
     exit <| int ExitCode.Success
 
 if options.Error then
-    printMessage defaultErrorColor invalidArgsMessage
+    Logger.PrintError invalidArgsMessage
     exit <| int ExitCode.InvalidArguments
 
 let interpreter =
     match options.SourceFile with
     | Some path ->
         try
-            LambdaInterpreter.StartOnFile (path, options.Verbose, options.LineNumber)
+            let colorScheme = ColorScheme.Script
+            let logger = new Logger (colorScheme, Verbosity.Normal, options.LineNumber)
+            LambdaInterpreter.StartOnFile (path, logger)
         with
         | :? IOException
         | :? UnauthorizedAccessException as ex ->
-            printMessage defaultErrorColor ex.Message
+            Logger.PrintError ex.Message
             exit <| int ExitCode.FileNotFound
-    | None -> LambdaInterpreter.StartInteractive options.Verbose
+    | None ->
+        let colorScheme = ColorScheme.Interactive
+        let logger = new Logger (colorScheme, Verbosity.Normal, false)
+        LambdaInterpreter.StartInteractive logger
 
 using
     interpreter
     (fun interpreter ->
-        let colorScheme = getColorScheme interpreter
-
-        if interpreter.IsInteractive then
-            printHeaderWithHelpSuggestion ()
-
-        for output in interpreter.RunToEnd () do
-            handleOutput colorScheme output
-
+        interpreter.RunToEnd () |> Seq.iter ignore
         getExitCode interpreter |> int |> exit
     )
