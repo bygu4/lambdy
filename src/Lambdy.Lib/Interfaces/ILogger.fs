@@ -1,5 +1,7 @@
 namespace Lambdy.Lib.Interfaces
 
+open System.Threading.Tasks
+
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
@@ -41,9 +43,9 @@ module ILogger =
     type ILogger =
 
         /// Handle the given log record.
-        abstract member Log : LogRecord -> unit
+        abstract member LogAsync : LogRecord -> Task
 
         static member TryLog (logger : ILogger option, record : LogRecord) =
             match logger with
-            | Some logger -> logger.Log record
+            | Some logger -> logger.LogAsync record |> ignore
             | None -> ()

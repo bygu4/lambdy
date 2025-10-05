@@ -15,6 +15,7 @@ module Logger =
     type Logger(colorScheme : ColorScheme, ?verbosity : Verbosity, ?lineNumber : bool) =
         let verbosity = defaultArg verbosity Verbosity.Minimal
         let lineNumber = defaultArg lineNumber false
+        let lockObject = new obj ()
 
         let printLog prefixColor msgColor prefix msg =
             if prefix <> String.Empty then
@@ -121,9 +122,15 @@ module Logger =
         static member private PrintfnColorized color str =
             Logger.PrintfColorized color (str + "\n")
 
-        member _.Log record =
-            if matchesTargetVerbosity record verbosity then
-                handleRecord record
+        member _.LogAsync record =
+            task {
+                lock
+                    lockObject
+                    (fun () ->
+                        if matchesTargetVerbosity record verbosity then
+                            handleRecord record
+                    )
+            }
 
         interface ILogger with
-            member this.Log record = this.Log record
+            member this.LogAsync record = this.LogAsync record
