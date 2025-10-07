@@ -4,27 +4,61 @@ open NUnit.Framework
 open FsUnit
 open FParsec
 
-open Lambdy.Syntax.Parsers
+open Lambdy.Lib.ParseTree
+open Lambdy.Lib.Parsers
 
-let runTest (testCases : (string * Parser<'a, unit> * int option) seq) =
-    for input, parser, expectedPos in testCases do
-        let result = input |> run parser
+let vars = List.map Name
+let varOp = Name >> Variable
 
-        match result with
-        | Success (_, _, pos) -> pos.Index |> should equal expectedPos.Value
-        | _ -> expectedPos |> _.IsNone |> should be True
+let abs names term = Abstraction (vars names, term)
+
+let app1 operand = Application (operand, Epsilon)
+
+let app2 operand1 operand2 =
+    Application (operand1, WithContinuation (operand2, Epsilon))
+
+let app3 operand1 operand2 operand3 =
+    Application (operand1, WithContinuation (operand2, WithContinuation (operand3, Epsilon)))
+
+let closingAbs2 operand1 names term =
+    Application (operand1, ClosingAbstraction (abs names term))
+
+let closingAbs3 operand1 operand2 names term =
+    Application (operand1, WithContinuation (operand2, ClosingAbstraction (abs names term)))
+
+let varTerm = varOp >> app1
+
+let brAbs names = abs names >> Brackets
+
+let brAbsTerm names = brAbs names >> app1
+
+let brApp1 = app1 >> Brackets
+
+let brApp2 operand1 = app2 operand1 >> Brackets
+
+let brApp3 operand1 operand2 = app3 operand1 operand2 >> Brackets
+
+let brVar = varOp >> brApp1
+
+let brVarTerm = brVar >> app1
+
+let runTest (testCases : (string * Parser<'a, unit> * 'a option) seq) =
+    for input, parser, expectedRes in testCases do
+        match run parser input with
+        | Success (res, _, _) -> res |> should equal expectedRes.Value
+        | _ -> expectedRes.IsNone |> should be True
 
 [<Test>]
 let testParser_WhiteSpace () =
     [
-        "", whitespaceOpt, Some 0
-        "\t", whitespaceOpt, Some 1
-        "  \t\t  ", whitespaceOpt, Some 6
-        "   \n", whitespaceOpt, Some 4
+        "", whitespaceOpt, Some ()
+        "\t", whitespaceOpt, Some ()
+        "  \t\t  ", whitespaceOpt, Some ()
+        "   \n", whitespaceOpt, Some ()
         "", whitespace, None
-        " ", whitespace, Some 1
-        "\n", whitespace, Some 1
-        "  \t\t    a", whitespace, Some 8
+        " ", whitespace, Some ()
+        "\n", whitespace, Some ()
+        "  \t\t    a", whitespace, Some ()
         "a1", whitespace, None
     ]
     |> runTest
@@ -32,10 +66,10 @@ let testParser_WhiteSpace () =
 [<Test>]
 let testParser_InputEnd () =
     [
-        "", inputEnd, Some 0
-        "     ", inputEnd, Some 5
-        "\n", inputEnd, Some 1
-        "   \n", inputEnd, Some 4
+        "", inputEnd, Some ()
+        "     ", inputEnd, Some ()
+        "\n", inputEnd, Some ()
+        "   \n", inputEnd, Some ()
         "a12", inputEnd, None
         "  1   ", inputEnd, None
     ]
@@ -44,21 +78,21 @@ let testParser_InputEnd () =
 [<Test>]
 let testParser_Variable () =
     [
-        "x", variable, Some 1
-        "ab", variable, Some 2
-        "RE0", variable, Some 3
-        "ab_123", variable, Some 6
-        "p33_", variable, Some 4
+        "x", variable, Some <| Name "x"
+        "ab", variable, Some <| Name "ab"
+        "RE0", variable, Some <| Name "RE0"
+        "ab_123", variable, Some <| Name "ab_123"
+        "p33_", variable, Some <| Name "p33_"
         "_nm", variable, None
         "100qwe", variable, None
-        "ololo%", variable, Some 5
+        "ololo%", variable, Some <| Name "ololo"
         "  ,  ", variable, None
         "@test", variable, None
         "let", variable, None
-        "letvar", variable, Some 6
-        "not_a_let", variable, Some 9
+        "letvar", variable, Some <| Name "letvar"
+        "not_a_let", variable, Some <| Name "not_a_let"
         "exit", variable, None
-        "display", variable, None
+        "scope", variable, None
     ]
     |> runTest
 
@@ -66,161 +100,217 @@ let testParser_Variable () =
 let testParser_Variables () =
     [
         "", variables, None
-        "a", variables, Some 1
-        "X Y Z", variables, Some 5
-        "x1 x2 x3 x4", variables, Some 11
-        "v_1     v_2 x_3", variables, Some 15
-        "a _ b", variables, Some 2
+        "a", variables, Some <| vars [ "a" ]
+        "X Y Z", variables, Some <| vars [ "X" ; "Y" ; "Z" ]
+        "x1 x2 x3 x4", variables, Some <| vars [ "x1" ; "x2" ; "x3" ; "x4" ]
+        "v_1     v_2 v_3", variables, Some <| vars [ "v_1" ; "v_2" ; "v_3" ]
+        "a _ b", variables, Some <| vars [ "a" ]
         "1 2", variables, None
-        "  ololo ololo  ", variables, Some 15
-        "first, second", variables, Some 5
-        "fst   snd thd   \t\n", variables, Some 18
+        "  ololo ololo  ", variables, Some <| vars [ "ololo" ; "ololo" ]
+        "first, second", variables, Some <| vars [ "first" ]
+        "fst   snd thd   \t\n", variables, Some <| vars [ "fst" ; "snd" ; "thd" ]
+        "% VAR ^", variables, None
     ]
     |> runTest
 
 [<Test>]
 let testParser_Operand () =
     [
-        "var1", operand, Some 4
+        "var1", operand, Some <| varOp "var1"
         "()", operand, None
-        "(some_var)", operand, Some 10
-        "(   XYZ )", operand, Some 9
+        "(some_var)", operand, Some <| brVar "some_var"
+        "(   XYZ )", operand, Some <| brVar "XYZ"
         "_not_a_var", operand, None
-        "A B", operand, Some 1
+        "A B", operand, Some <| varOp "A"
         "((var)", operand, None
-        "( ((ololo ))  )", operand, Some 15
+        "( ((ololo ))  )", operand, Some <| brApp1 (brApp1 (brVar "ololo"))
         "\\x.y", operand, None
-        "(first  second )", operand, Some 16
-        "(\\u v w.v)", operand, Some 10
-        "((\\x.x) i j)", operand, Some 12
+        "(first  second )", operand, Some <| brApp2 (varOp "first") (varOp "second")
+        "(\\u v w.v)", operand, Some <| brAbs [ "u" ; "v" ; "w" ] (varTerm "v")
+        "((\\x.x) i j)", operand, Some <| brApp3 (brAbs [ "x" ] (varTerm "x")) (varOp "i") (varOp "j")
     ]
     |> runTest
 
 [<Test>]
 let testParser_Application () =
     [
-        "a", application, Some 1
-        "(var_1)", application, Some 7
-        "X Y", application, Some 3
-        "( ololo ) (abc)", application, Some 15
-        "a1    a2    a3", application, Some 14
+        "a", application, Some <| app1 (varOp "a")
+        "(var_1)", application, Some <| brVarTerm "var_1"
+        "X Y", application, Some <| app2 (varOp "X") (varOp "Y")
+        "( ololo ) (abc)", application, Some <| app2 (brVar "ololo") (brVar "abc")
+        "a1    a2    a3", application, Some <| app3 (varOp "a1") (varOp "a2") (varOp "a3")
         "(_xyz)", application, None
-        "(var1) 2var", application, Some 6
-        "(a b)   c", application, Some 9
-        "var (\\x.x z)", application, Some 12
-        "(  (\\A1 B2 C3.A1) ololo)  var1", application, Some 30
-        "var1  (var2)   var3  \t ", application, Some 19
-        "( \\x.x )", application, Some 8
-        "left \\x.right ", application, Some 13
+        "(var1) 2var", application, Some <| brVarTerm "var1"
+        "(a b)   c", application, Some <| app2 (brApp2 (varOp "a") (varOp "b")) (varOp "c")
+        "var (\\x.x z)", application, Some <| app2 (varOp "var") (brAbs [ "x" ] (app2 (varOp "x") (varOp "z")))
+        "var1  (var2)   var3  \t ", application, Some <| app3 (varOp "var1") (brVar "var2") (varOp "var3")
+        "( \\x.x )", application, Some <| brAbsTerm [ "x" ] (varTerm "x")
+        "left \\x.right ", application, Some <| closingAbs2 (varOp "left") [ "x" ] (varTerm "right")
+        "I J \\x.K", application, Some <| closingAbs3 (varOp "I") (varOp "J") [ "x" ] (varTerm "K")
+        "(  (\\A1 B2 C3.A1) ololo)  var1",
+        application,
+        Some
+        <| app2 (brApp2 (brAbs [ "A1" ; "B2" ; "C3" ] (varTerm "A1")) (varOp "ololo")) (varOp "var1")
+        "( O  \\K.K A) S",
+        application,
+        Some
+        <| app2 (Brackets (closingAbs2 (varOp "O") [ "K" ] (app2 (varOp "K") (varOp "A")))) (varOp "S")
     ]
     |> runTest
 
 [<Test>]
 let testParser_Abstraction () =
     [
-        "\\x.x", abstraction, Some 4
-        "\\a b c.d", abstraction, Some 8
-        "\\var1    var2.(var3)", abstraction, Some 20
-        "\\_a.b", abstraction, None
         "abc.d", abstraction, None
+        "\\FST SND", abstraction, None
+        "\\x.  ", abstraction, None
+        "\\  . U V W", abstraction, None
+        "\\ . ", abstraction, None
+        "\\x.x", abstraction, Some <| abs [ "x" ] (varTerm "x")
+        "\\a b c.d", abstraction, Some <| abs [ "a" ; "b" ; "c" ] (varTerm "d")
+        "\\var1    var2.(var3)", abstraction, Some <| abs [ "var1" ; "var2" ] (brVarTerm "var3")
+        "\\_a.b", abstraction, None
         "\\x  y  z  (k)", abstraction, None
-        "\\x.\\y.\\z.x", abstraction, Some 10
-        "\\first second.\\var.first second", abstraction, Some 31
-        "\\x y z.x y z", abstraction, Some 12
-        "\\ A   B C. \t B (C A)", abstraction, Some 20
-        "\\   u v  .  \\x. x v", abstraction, Some 19
+        "\\x.\\y.\\z.x", abstraction, Some <| abs [ "x" ] (abs [ "y" ] (abs [ "z" ] (varTerm "x")))
+        "\\x y z.x y z", abstraction, Some <| abs [ "x" ; "y" ; "z" ] (app3 (varOp "x") (varOp "y") (varOp "z"))
+        "\\   u v  .  \\x. x v", abstraction, Some <| abs [ "u" ; "v" ] (abs [ "x" ] (app2 (varOp "x") (varOp "v")))
+        "\\ A   B C. \t B (C A)",
+        abstraction,
+        Some
+        <| abs [ "A" ; "B" ; "C" ] (app2 (varOp "B") (brApp2 (varOp "C") (varOp "A")))
+        "\\first second.\\var.first second",
+        abstraction,
+        Some
+        <| abs [ "first" ; "second" ] (abs [ "var" ] (app2 (varOp "first") (varOp "second")))
     ]
     |> runTest
 
 [<Test>]
 let testParser_Term () =
     [
-        "var1", term, Some 4
-        "((ololo) )", term, Some 10
-        "(\\x y.x)", term, Some 8
-        "\\x y z.x z (y z)", term, Some 16
-        "S K   K ", term, Some 7
-        "((\\a.a)   tmp)  (\\x.\\y.\\z.y z x)", term, Some 32
-        "(term))", term, Some 6
-        "\\x.\\y", term, None
         "_q", term, None
-        "a, b, c", term, Some 1
-        "\\X Y  Z.Z \\t.X Y", term, Some 16
-        "(  \\ a b  . z)", term, Some 14
-        "\\U. U (\\x.x) V", term, Some 14
+        "\\x.\\y", term, None
+        "A B (x.y)", term, Some <| app2 (varOp "A") (varOp "B")
+        "var1", term, Some <| varTerm "var1"
+        "((ololo) )", term, Some <| app1 (brApp1 (brVar "ololo"))
+        "(\\x y.x)", term, Some <| brAbsTerm [ "x" ; "y" ] (varTerm "x")
+        "(term))", term, Some <| brVarTerm "term"
+        "a, b, c", term, Some <| varTerm "a"
+        "a b (\\x.x)", term, Some <| app3 (varOp "a") (varOp "b") (brAbs [ "x" ] (varTerm "x"))
+        "S K   K ", term, Some <| app3 (varOp "S") (varOp "K") (varOp "K")
+        "(  \\ a b  . z)", term, Some <| brAbsTerm [ "a" ; "b" ] (varTerm "z")
+        "\\U. U (\\x.x) V", term, Some <| abs [ "U" ] (app3 (varOp "U") (brAbs [ "x" ] (varTerm "x")) (varOp "V"))
+        "\\X Y  Z.Z \\t.X Y",
+        term,
+        Some
+        <| abs [ "X" ; "Y" ; "Z" ] (closingAbs2 (varOp "Z") [ "t" ] (app2 (varOp "X") (varOp "Y")))
+        "\\x y z.x z (y z)",
+        term,
+        Some
+        <| abs [ "x" ; "y" ; "z" ] (app3 (varOp "x") (varOp "z") (brApp2 (varOp "y") (varOp "z")))
+        "((\\a.a)   tmp)  (\\x.\\y.\\z.y z x)",
+        term,
+        Some
+        <| app2
+            (brApp2 (brAbs [ "a" ] (varTerm "a")) (varOp "tmp"))
+            (brAbs [ "x" ] (abs [ "y" ] (abs [ "z" ] (app3 (varOp "y") (varOp "z") (varOp "x")))))
     ]
     |> runTest
 
 [<Test>]
 let testParser_Declaration () =
     [
-        "let VAR", declaration, Some 7
+        "let VAR", declaration, Some <| Name "VAR"
         "let", declaration, None
         "olet a", declaration, None
         "   let xy", declaration, None
-        "let    tmp", declaration, Some 10
+        "let    tmp", declaration, Some <| Name "tmp"
         "foo", declaration, None
         "bar ololo", declaration, None
         "let let", declaration, None
         "let help", declaration, None
-        "let exitCode", declaration, Some 12
+        "let exitCode", declaration, Some <| Name "exitCode"
     ]
     |> runTest
 
 [<Test>]
-let testParser_Definition () =
+let testParser_Binding () =
     [
-        "let a = b", definition, Some 9
-        "let   tmp = x y z", definition, Some 17
-        "let ololo", definition, None
-        "  let var1 = var2", definition, None
-        "let A B", definition, None
-        "let x != y", definition, None
-        "foo bar = baz", definition, None
-        "let v1    =   v2", definition, Some 16
-        "let term = ", definition, None
-        "let let = X Y Z", definition, None
-        "let clear = I x x", definition, None
+        "let a = b", binding, Some <| Binding (Name "a", varTerm "b")
+        "let   tmp = x y z", binding, Some <| Binding (Name "tmp", app3 (varOp "x") (varOp "y") (varOp "z"))
+        "let ololo", binding, None
+        "  let var1 = var2", binding, None
+        "let A B", binding, None
+        "let x != y", binding, None
+        "foo bar = baz", binding, None
+        "let v1    =   v2", binding, Some <| Binding (Name "v1", varTerm "v2")
+        "let term = ", binding, None
+        "let let = X Y Z", binding, None
+        "let clear = I x x", binding, None
+        "let test = (\\x.x y)", binding, Some <| Binding (Name "test", brAbsTerm [ "x" ] (app2 (varOp "x") (varOp "y")))
     ]
     |> runTest
 
 [<Test>]
 let testParser_Command () =
     [
-        "reset", command, Some 5
-        "display", command, Some 7
-        "help", command, Some 4
-        "clear", command, Some 5
-        "exit", command, Some 4
+        "reset", command, Some <| Command Reset
+        "scope", command, Some <| Command Scope
+        "help", command, Some <| Command Help
+        "clear", command, Some <| Command Clear
+        "exit", command, Some <| Command Exit
         "not_help", command, None
-        "exitCode", command, Some 4
+        "exitCode", command, Some <| Command Exit
         "   clear", command, None
-        "exit  \t  ", command, Some 4
-        "reset vars", command, Some 5
+        "exit  \t  ", command, Some <| Command Exit
+        "reset vars", command, Some <| Command Reset
+        "exxxit", command, None
     ]
     |> runTest
 
 [<Test>]
 let testParser_Expression () =
     [
-        "let S = \\x y z.x z (y z)\n", expression, Some 25
-        "let K  = \\x y.x", expression, Some 15
-        "S K K \t\n", expression, Some 8
-        "let  tmp = (\\x  y z.some ( \\k.y z) x ) var", expression, Some 42
-        "\n", expression, Some 1
-        "       \n", expression, Some 8
+        "\n", expression, Some Empty
+        "       \n", expression, Some Empty
         "  let I = \\x.x", expression, None
         "_wewq", expression, None
         "123\n", expression, None
-        "", expression, Some 0
-        "variable", expression, Some 8
-        "let test = (\\x.x) y,  ", expression, None
-        "help  \t", expression, Some 7
-        "clear buff", expression, None
-        "let ololo_exit = (\\x.\\y.x ) z\n", expression, Some 30
         "a clear", expression, None
         "\n  exit", expression, None
-        "let var  = \\x.x \\y.y", expression, Some 20
-        "\\A B.A \\x.B  \t", expression, Some 14
+        "", expression, Some Empty
+        "variable", expression, Some <| Result (varTerm "variable")
+        "let test = (\\x.x) y,  ", expression, None
+        "help  \t", expression, Some <| Command Help
+        "clear buff", expression, None
+        "let K  = \\x y.x", expression, Some <| Binding (Name "K", abs [ "x" ; "y" ] (varTerm "x"))
+        "S K K \t\n", expression, Some <| Result (app3 (varOp "S") (varOp "K") (varOp "K"))
+        "let S = \\x y z.x z (y z)\n",
+        expression,
+        Some
+        <| Binding (Name "S", abs [ "x" ; "y" ; "z" ] (app3 (varOp "x") (varOp "z") (brApp2 (varOp "y") (varOp "z"))))
+        "let ololo_exit = (\\x.\\y.x ) z\n",
+        expression,
+        Some
+        <| Binding (Name "ololo_exit", app2 (brAbs [ "x" ] (abs [ "y" ] (varTerm "x"))) (varOp "z"))
+        "let var  = \\x.x \\y.y",
+        expression,
+        Some
+        <| Binding (Name "var", abs [ "x" ] (closingAbs2 (varOp "x") [ "y" ] (varTerm "y")))
+        "\\A B.A \\x.B  \t",
+        expression,
+        Some
+        <| Result (abs [ "A" ; "B" ] (closingAbs2 (varOp "A") [ "x" ] (varTerm "B")))
+        "let  tmp = (\\x  y z.some ( \\k.y z) x ) var",
+        expression,
+        Some
+        <| Binding (
+            Name "tmp",
+            app2
+                (brAbs
+                    [ "x" ; "y" ; "z" ]
+                    (app3 (varOp "some") (brAbs [ "k" ] (app2 (varOp "y") (varOp "z"))) (varOp "x")))
+                (varOp "var")
+        )
     ]
     |> runTest

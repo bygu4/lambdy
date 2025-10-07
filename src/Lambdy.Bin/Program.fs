@@ -37,7 +37,7 @@ let interpreter =
         try
             let colorScheme = ColorScheme.Script
             let logger = new Logger (colorScheme, Verbosity.Normal, options.LineNumber)
-            LambdaInterpreter.StartOnFile (path, logger)
+            LambdaInterpreter.StartOnFile (path = path, logger = logger)
         with
         | :? IOException
         | :? UnauthorizedAccessException as ex ->
@@ -46,7 +46,7 @@ let interpreter =
     | None ->
         let colorScheme = ColorScheme.Interactive
         let logger = new Logger (colorScheme, Verbosity.Normal, false)
-        LambdaInterpreter.StartInteractive logger
+        LambdaInterpreter.StartInteractive (logger = logger)
 
 using
     interpreter

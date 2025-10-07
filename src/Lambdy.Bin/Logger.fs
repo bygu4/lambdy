@@ -17,6 +17,8 @@ module Logger =
         let lineNumber = defaultArg lineNumber false
         let lockObject = new obj ()
 
+        // ------------- Helpers -------------------------------
+
         let printLog prefixColor msgColor prefix msg =
             if prefix <> String.Empty then
                 Logger.PrintfColorized prefixColor $"[{prefix}]: "
@@ -107,6 +109,8 @@ module Logger =
             | Diagnostic (Substitution (var, sub)) -> handleSubstitution var sub
             | Diagnostic (BoundValue (var, value)) -> handleBoundValue var value
             | Diagnostic (DelayedConversion (term, var, sub)) -> handleDelayedConversion term var sub
+
+        // ------------- Members -------------------------------
 
         static member PrintSuccess str =
             Logger.PrintfnColorized defaultSuccessColor str

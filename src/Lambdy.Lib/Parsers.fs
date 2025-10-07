@@ -79,7 +79,7 @@ module Parsers =
     let declaration = pstring DeclarationKeyword >>. !<variable
 
     /// Accept a variable declaration with assignment.
-    let definition = !>declaration .>> pchar '=' .>>. !<term |>> Definition
+    let binding = !>declaration .>> pchar '=' .>>. !<term |>> Binding
 
     /// Accept a keyword for resetting defined variables.
     let reset = pstring ResetKeyword >>. preturn (Command Reset)
@@ -101,7 +101,7 @@ module Parsers =
 
     /// Accept an expression or an empty string.
     let expressionOpt : Parser<Expression, unit> =
-        choice [ attempt term |>> Result ; definition ; command ; preturn Empty ]
+        choice [ attempt term |>> Result ; binding ; command ; preturn Empty ]
 
     /// Accept an expression or an empty string followed by end of the input.
     let expression = expressionOpt .>> inputEnd

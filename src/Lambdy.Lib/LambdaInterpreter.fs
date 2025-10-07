@@ -14,9 +14,9 @@ open Lambdy.Lib.Interfaces.ILambdaInterpreter
 module LambdaInterpreter =
 
     /// Class representing the lambda term interpreter.
-    type LambdaInterpreter private (stream : Stream, interactive : bool, ?logger : ILogger) =
+    type LambdaInterpreter private (stream : Stream, interactive : bool, ?reductionLimit : int, ?logger : ILogger) =
         let reader = new StreamReader (stream)
-        let reducer = new Reducer (1000000, ?logger = logger)
+        let reducer = new Reducer (?reductionLimit = reductionLimit, ?logger = logger)
 
         let mutable currentLine = 0
         let mutable syntaxError = false
@@ -28,14 +28,24 @@ module LambdaInterpreter =
 
         /// Create an interactive interpreter for the standard console input.
         /// Use `verbose` option to print logs to the console.
-        static member StartInteractive (?logger : ILogger) =
-            new LambdaInterpreter (Console.OpenStandardInput (), true, ?logger = logger)
+        static member StartInteractive (?reductionLimit : int, ?logger : ILogger) =
+            new LambdaInterpreter (
+                stream = Console.OpenStandardInput (),
+                interactive = true,
+                ?reductionLimit = reductionLimit,
+                ?logger = logger
+            )
 
         /// Create an interpreter to run on a source file at the given `path`.
         /// Use `verbose` option to print logs to the console.
         /// Use `lineNumber` option to add line number to the output.
-        static member StartOnFile (path : string, ?logger : ILogger) =
-            new LambdaInterpreter (File.OpenRead path, false, ?logger = logger)
+        static member StartOnFile (path : string, ?reductionLimit : int, ?logger : ILogger) =
+            new LambdaInterpreter (
+                stream = File.OpenRead path,
+                interactive = false,
+                ?reductionLimit = reductionLimit,
+                ?logger = logger
+            )
 
         /// Whether the interpreter is being run in console.
         member _.IsInteractive = interactive
@@ -70,12 +80,12 @@ module LambdaInterpreter =
         member private _.RunOnNextLineAsync () =
 
             /// Execute the given special interpreter `command`.
-            let runCommand command =
+            let inline runCommand command =
                 match command with
                 | Reset ->
-                    reducer.ResetBindings ()
+                    reducer.Reset ()
                     ILogger.TryLog (logger, Detailed WasReset)
-                | Scope -> logIfInteractive (Minimal <| CurrentScope reducer.Bindings)
+                | Scope -> logIfInteractive (Minimal <| CurrentScope reducer.Scope)
                 | Help -> logIfInteractive (Minimal SyntaxHelp)
                 | Clear -> logIfInteractive (Minimal ClearBuffer)
                 | Exit -> reader.Close ()
@@ -83,9 +93,9 @@ module LambdaInterpreter =
                 None
 
             /// Interpret the given `primary` expression representation.
-            let interpretExpression primary =
+            let inline interpretExpression primary =
                 match buildExpressionAST primary with
-                | Definition (var, term) ->
+                | Binding (var, term) ->
                     reducer.AddBinding (var, term)
                     ILogger.TryLog (logger, Detailed <| NewBinding (var, term))
                     None

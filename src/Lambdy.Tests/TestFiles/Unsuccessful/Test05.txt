@@ -5,3 +5,5 @@ let o = \x.x x
 let O = o o
 O
 O O O
+
+o

@@ -8,7 +8,7 @@ open Lambdy.Lib.Interfaces.IReducer
 
 module Reducer =
 
-    type Reducer(?maxReductions : int, ?logger : ILogger) =
+    type Reducer(?reductionLimit : int, ?logger : ILogger) =
         let mutable bindings : (VariableName * IR) list = []
 
         // ------------- Diagnostic logging --------------------
@@ -148,16 +148,15 @@ module Reducer =
         [<TailCall>]
         let rec reduce' ret count term root cont =
 
-            let inline maybe step =
+            let inline maybe fail step =
                 function
                 | Ok result -> step result
-                | _ as err -> err
+                | _ as err -> fail err
 
-            let inline maybePassTo cont step = maybe step >> cont
-
-            if maxReductions.IsSome && count > maxReductions.Value then
-                cont <| Error "Max recursion depth exceeded during the reduction."
-            else
+            let inline tryReduce count term body var sub root cont =
+                match reductionLimit with
+                | Some limit when count >= limit -> cont <| Error "Max recursion depth exceeded during the reduction."
+                | _ -> betaReduction term body var sub root |> Ok |> cont
 
             match term with
 
@@ -172,10 +171,17 @@ module Reducer =
                     count
                     body
                     (fun body -> irAbs var body |> root)
-                    (maybePassTo cont (fun reducedBody -> irAbs var reducedBody |> Ok))
+                    (maybe cont (fun reducedBody -> irAbs var reducedBody |> Ok |> cont))
 
             | Application (Abstraction (var, _, body), sub) ->
-                reduce' ret (count + 1) (betaReduction term body var sub root) root cont
+                tryReduce
+                    count
+                    term
+                    body
+                    var
+                    sub
+                    root
+                    (maybe cont (fun reducedTerm -> reduce' ret (count + 1) reducedTerm root cont))
 
             | Application (left, right) ->
                 reduce'
@@ -183,17 +189,19 @@ module Reducer =
                     count
                     left
                     (fun left -> irApp left right |> root)
-                    (maybe (fun reducedLeft ->
-                        match reducedLeft with
-                        | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
-                        | _ ->
-                            reduce'
-                                false
-                                count
-                                right
-                                (fun right -> irApp reducedLeft right |> root)
-                                (maybePassTo cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok))
-                    ))
+                    (maybe
+                        cont
+                        (fun reducedLeft ->
+                            match reducedLeft with
+                            | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
+                            | _ ->
+                                reduce'
+                                    false
+                                    count
+                                    right
+                                    (fun right -> irApp reducedLeft right |> root)
+                                    (maybe cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok |> cont))
+                        ))
 
             | _ -> cont <| Ok term
 
@@ -224,13 +232,13 @@ module Reducer =
 
         // ------------- Members -------------------------------
 
-        member _.Bindings = List.rev bindings
+        member _.Scope = List.rev bindings
 
         member _.AddBinding (var, value) =
             let boundValue = bindMany (bindings |> List.rev |> Map.ofList) value
             bindings <- (var, boundValue) :: bindings
 
-        member _.ResetBindings () = bindings <- []
+        member _.Reset () = bindings <- []
 
         member _.Reduce term =
             term
@@ -241,7 +249,7 @@ module Reducer =
                 | Error msg -> Error msg
 
         interface IReducer with
-            member this.Bindings = this.Bindings
+            member this.Scope = this.Scope
             member this.AddBinding (var, term) = this.AddBinding (var, term)
-            member this.ResetBindings () = this.ResetBindings ()
+            member this.Reset () = this.Reset ()
             member this.Reduce term = this.Reduce term

@@ -5,6 +5,11 @@ x y
 
 (\x  y.x y) y
 
-let o = \x. x x
-let E = \ y. y y y  y
-E o
+let x = a b c
+let y = Y
+let T = \Y.y \a.x Y
+
+x y
+T
+T x
+T y

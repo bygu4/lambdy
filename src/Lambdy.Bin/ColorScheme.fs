@@ -39,7 +39,7 @@ module ColorScheme =
                     ConsoleColor.Yellow,
                     ConsoleColor.White,
                     ConsoleColor.DarkYellow,
-                    ConsoleColor.Gray,
+                    ConsoleColor.DarkYellow,
                     ConsoleColor.DarkGray
                 )
 

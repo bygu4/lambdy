@@ -13,7 +13,7 @@ module IReducer =
     type IReducer =
 
         // Get list of defined variables.
-        abstract member Bindings : (VariableName * IR) list
+        abstract member Scope : (VariableName * IR) list
 
         // Perform beta-reduction of the given lambda term according to defined variables.
         abstract member Reduce : IR -> ReductionResult
@@ -22,4 +22,4 @@ module IReducer =
         abstract member AddBinding : VariableName * IR -> unit
 
         // Clear the list of defined variables.
-        abstract member ResetBindings : unit -> unit
+        abstract member Reset : unit -> unit

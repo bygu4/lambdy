@@ -31,4 +31,7 @@
     <ProjectReference Include="..\Lambdy.Lib\Lambdy.Lib.fsproj" />
     <ProjectReference Include="..\Lambdy.Bin\Lambdy.Bin.fsproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="fparsec" Version="1.1.1" />
+  </ItemGroup>
 </Project>

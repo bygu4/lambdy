@@ -10,7 +10,7 @@ module AST =
 
     /// The finalized expression representation.
     type Expression =
-        | Definition of VariableName * IR
+        | Binding of VariableName * IR
         | Result of IR
         | Command of SpecialCommand
         | Empty
@@ -21,7 +21,7 @@ module AST =
     let rec private buildTermAST' primary cont =
 
         /// Convert `primary` operand representation to the lambda term.
-        let buildOperandAST primary cont =
+        let inline buildOperandAST primary cont =
             match primary with
             | ParseTree.Variable var -> irVar var |> cont
             | Brackets term -> buildTermAST' term cont
@@ -55,7 +55,7 @@ module AST =
     /// Build a finalized expression representation from the `primary` one.
     let buildExpressionAST primary =
         match primary with
-        | ParseTree.Definition (variable, term) -> Definition (variable, buildTermAST term)
+        | ParseTree.Binding (variable, term) -> Binding (variable, buildTermAST term)
         | ParseTree.Result term -> Result (buildTermAST term)
         | ParseTree.Command command -> Command command
         | ParseTree.Empty -> Empty

@@ -35,7 +35,7 @@ module ParseTree =
 
     /// An expression to be interpreted.
     type Expression =
-        | Definition of VariableName * Term
+        | Binding of VariableName * Term
         | Result of Term
         | Command of SpecialCommand
         | Empty
