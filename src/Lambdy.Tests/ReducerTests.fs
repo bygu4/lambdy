@@ -126,6 +126,16 @@ module ReducerTests =
                         (Some <| Name "y'")
                         (irApp (irVarTerm "x") (irVarBound (Name "Y") (Some <| irVarTerm "y")))))
                 (irVarTerm "y'")
+
+            // Eta conversion
+            irAbs (Name "x") (irApp (irVarTerm "hehehe") (irVarTerm "x"))
+            irAbs (Name "S1") (irApp (irVarTerm "S1") (irVarTerm "S1"))
+            irAbs (Name "z") (irApp (irApp (irVarTerm "x") (irVarTerm "y")) (irVarTerm "z"))
+            irAbs (Name "x") (irApp (irVarBound (Name "I") (Some <| irI "y")) (irVarTerm "x"))
+            irApp (irVarTerm "A") (irAbs (Name "VAR") (irApp (irVarTerm "A") (irVarTerm "VAR")))
+            irAbs (Name "Q") (irApp (irAbs (Name "Q") (irApp (irVarTerm "Q") (irVarTerm "P"))) (irVarTerm "Q"))
+            irApp (irAbs (Name "x") (irApp irOmega (irVarTerm "x"))) (irVarTerm "Z")
+            irAbs (Name "qwq") (irApp (irApp (irVarTerm "qwq") (irVarTerm "o")) (irVarTerm "qwq"))
         ]
 
     let reducedTerms =
@@ -197,6 +207,17 @@ module ReducerTests =
             Some <| lamI "y"
             Some <| lamAbs (Name "y'") (lamApp (lamVarTerm "y") (lamVarTerm "y'"))
             Some <| lamAbs (Name "y''") (lamApp (lamVarTerm "y'") (lamVarTerm "y"))
+
+            // Eta conversion
+            Some <| lamVarTerm "hehehe"
+            Some <| lamAbs (Name "S1") (lamApp (lamVarTerm "S1") (lamVarTerm "S1"))
+            Some <| lamApp (lamVarTerm "x") (lamVarTerm "y")
+            Some <| lamI "y"
+            Some <| lamApp (lamVarTerm "A") (lamVarTerm "A")
+            Some <| lamAbs (Name "Q") (lamApp (lamVarTerm "Q") (lamVarTerm "P"))
+            Some <| lamApp (lamVarTerm "Z") (lamVarTerm "Z")
+            Some
+            <| lamAbs (Name "qwq") (lamApp (lamApp (lamVarTerm "qwq") (lamVarTerm "o")) (lamVarTerm "qwq"))
         ]
 
     let testCases = List.zip terms reducedTerms |> List.map TestCaseData

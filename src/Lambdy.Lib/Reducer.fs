@@ -17,12 +17,12 @@ module Reducer =
             ILogger.TryLog (logger, Diagnostic <| Substitution (var, sub))
             sub
 
-        let bindValue var bindings =
+        let bindValue term var bindings =
             match Map.tryFind var bindings with
             | Some value ->
                 ILogger.TryLog (logger, Diagnostic <| BoundValue (var, value))
                 irVarBound var (Some value)
-            | None -> irVar var
+            | None -> term
 
         let delayConversion term x conv body =
             match conv with
@@ -39,7 +39,7 @@ module Reducer =
 
             | _ when Map.isEmpty bindings -> cont term
 
-            | Variable (x, _) -> bindValue x bindings |> cont
+            | Variable (x, _) -> bindValue term x bindings |> cont
 
             | Abstraction (x, _, body) ->
                 let bindings = Map.remove x bindings
@@ -49,16 +49,16 @@ module Reducer =
                 else
 
                 let vars = set <| Map.keys bindings
-                let freeVarsT = freeVars false body
+                let freeVarsBody = freeVars false body
 
-                let freeVarsS =
-                    Set.intersect vars freeVarsT
+                let freeVarsSub =
+                    Set.intersect vars freeVarsBody
                     |> Seq.map (fun var -> bindings.[var] |> freeVars true)
                     |> Set.unionMany
 
                 let conv =
-                    if Set.contains x freeVarsS then
-                        Some <| nextFreeVar x (Set.union freeVarsT freeVarsS)
+                    if Set.contains x freeVarsSub then
+                        Some <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
                     else
                         None
 
@@ -81,20 +81,20 @@ module Reducer =
             | Variable (x, _) when x = var -> substitute var sub |> cont
 
             | Abstraction (x, conv, body) when x <> var ->
-                let freeVarsT = freeVars false body
-                let freeVarsS = freeVars true sub
+                let freeVarsBody = freeVars false body
+                let freeVarsSub = freeVars true sub
 
-                let willSubstitute = Set.contains var freeVarsT
-                let capturedX = Set.contains x freeVarsS
+                let willSubstitute = Set.contains var freeVarsBody
+                let capturedX = Set.contains x freeVarsSub
 
                 let capturedConv =
                     match conv with
-                    | Some y -> Set.contains y freeVarsS
+                    | Some y -> Set.contains y freeVarsSub
                     | None -> false
 
                 if willSubstitute then
-                    let freeVarsT = freeVars true body
-                    let y = nextFreeVar x (Set.union freeVarsT freeVarsS)
+                    let freeVarsBody = freeVars true body
+                    let y = nextFreeVar x (Set.union freeVarsBody freeVarsSub)
 
                     if capturedX then
                         ILogger.TryLog (logger, Normal <| AlphaConversion (term, x, y))
@@ -138,6 +138,11 @@ module Reducer =
             let res = irAbs y (substitute x (irVar y) body)
             currentTerm res root
 
+        let etaConversion term left root =
+            ILogger.TryLog (logger, Normal <| EtaConversion (term, left))
+            let res = left
+            currentTerm res root
+
         let betaReduction term body var sub root =
             ILogger.TryLog (logger, Normal <| BetaReduction (term, body, var, sub))
             let res = substitute var sub body
@@ -155,55 +160,73 @@ module Reducer =
 
             let inline tryReduce count term body var sub root cont =
                 match reductionLimit with
-                | Some limit when count >= limit -> cont <| Error "Max recursion depth exceeded during the reduction."
+                | Some limit when count >= limit -> cont <| Error $"Exceeded the reduction limit: {reductionLimit}."
                 | _ -> betaReduction term body var sub root |> Ok |> cont
 
+            let inline reduceVar ret count term var boundValue root cont =
+                match boundValue with
+                | Some boundValue -> reduce' ret count (unbind var boundValue root) root cont
+                | _ -> cont <| Ok term
+
+            let rec reduceAbs ret eta count term var conv body root cont =
+                match conv, body with
+
+                | _, Application (left, right) when eta && right = irVar var ->
+                    let freeVarsLeft = freeVars false left
+
+                    if not <| Set.contains var freeVarsLeft then
+                        reduce' ret count (etaConversion term left root) root cont
+                    else
+                        reduceAbs ret false count term var conv body root cont
+
+                | Some conv, body when not ret -> reduce' ret count (alphaConversion term var conv body root) root cont
+
+                | _, body when not ret ->
+                    reduce'
+                        ret
+                        count
+                        body
+                        (fun body -> irAbs var body |> root)
+                        (maybe cont (fun reducedBody -> irAbs var reducedBody |> Ok |> cont))
+
+                | _ -> cont <| Ok term
+
+            let inline reduceApp ret count term left right root cont =
+                match left with
+                | Abstraction (var, _, body) ->
+                    tryReduce
+                        count
+                        term
+                        body
+                        var
+                        right
+                        root
+                        (maybe cont (fun reducedTerm -> reduce' ret (count + 1) reducedTerm root cont))
+
+                | _ ->
+                    reduce'
+                        true
+                        count
+                        left
+                        (fun left -> irApp left right |> root)
+                        (maybe
+                            cont
+                            (fun reducedLeft ->
+                                match reducedLeft with
+                                | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
+                                | _ ->
+                                    reduce'
+                                        false
+                                        count
+                                        right
+                                        (fun right -> irApp reducedLeft right |> root)
+                                        (maybe cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok |> cont))
+                            ))
+
             match term with
-
-            | Variable (var, Some boundValue) -> reduce' ret count (unbind var boundValue root) root cont
-
-            | Abstraction (x, Some y, body) when not ret ->
-                reduce' ret count (alphaConversion term x y body root) root cont
-
-            | Abstraction (var, None, body) when not ret ->
-                reduce'
-                    ret
-                    count
-                    body
-                    (fun body -> irAbs var body |> root)
-                    (maybe cont (fun reducedBody -> irAbs var reducedBody |> Ok |> cont))
-
-            | Application (Abstraction (var, _, body), sub) ->
-                tryReduce
-                    count
-                    term
-                    body
-                    var
-                    sub
-                    root
-                    (maybe cont (fun reducedTerm -> reduce' ret (count + 1) reducedTerm root cont))
-
-            | Application (left, right) ->
-                reduce'
-                    true
-                    count
-                    left
-                    (fun left -> irApp left right |> root)
-                    (maybe
-                        cont
-                        (fun reducedLeft ->
-                            match reducedLeft with
-                            | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
-                            | _ ->
-                                reduce'
-                                    false
-                                    count
-                                    right
-                                    (fun right -> irApp reducedLeft right |> root)
-                                    (maybe cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok |> cont))
-                        ))
-
-            | _ -> cont <| Ok term
+            | Variable (var, boundValue) -> reduceVar ret count term var boundValue root cont
+            | Abstraction (var, conv, body) -> reduceAbs ret true count term var conv body root cont
+            | Application (left, right) -> reduceApp ret count term left right root cont
 
         let reduce term = reduce' false 0 term id id
 

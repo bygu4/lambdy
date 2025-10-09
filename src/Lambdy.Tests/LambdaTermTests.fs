@@ -108,7 +108,7 @@ module LambdaTermTests =
 
             Gen.sized genTerm |> Arb.fromGen
 
-    // For some reason this property only properly checks when passing an additional argument...
+    // For some reason this property is only properly checked when passing an additional argument :(.
     [<Property(Arbitrary = [| typeof<GenTerm> |])>]
     let ``Lambda term doesn't change after IR conversions`` initial (_ : bool) =
         initial |> toIR |> toLambdaTerm |> (=) initial

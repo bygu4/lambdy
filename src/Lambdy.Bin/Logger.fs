@@ -66,6 +66,9 @@ module Logger =
         let handleAlphaConversion term (Name var) (Name sub) =
             printNormalLog "alpha" $"{irToString strictTerms true term}: {var} -> {sub}"
 
+        let handleEtaConversion term res =
+            printNormalLog "eta" $"{irToString strictTerms false term} -> {irToString strictTerms false res}"
+
         let handleBetaReduction src body (Name var) sub =
             let srcStr = irToString strictTerms false src
             let bodyStr = irToString strictTerms true body
@@ -106,6 +109,7 @@ module Logger =
             | Normal (CurrentTerm term) -> handleCurrentTerm term
             | Normal (Unbinding (var, term)) -> handleUnbinding var term
             | Normal (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
+            | Normal (EtaConversion (term, left)) -> handleEtaConversion term left
             | Normal (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
             | Detailed (CurrentlyReducing term) -> handleCurrentlyReducing term
             | Detailed (NewBinding (var, value)) -> handleNewBinding var value

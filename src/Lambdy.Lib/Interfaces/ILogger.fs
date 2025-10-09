@@ -19,6 +19,7 @@ module ILogger =
         | CurrentTerm of IR
         | Unbinding of VariableName * IR
         | AlphaConversion of IR * VariableName * VariableName
+        | EtaConversion of IR * IR
         | BetaReduction of IR * IR * VariableName * IR
 
     type Detailed =
