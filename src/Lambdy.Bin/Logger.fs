@@ -4,6 +4,7 @@ open System
 
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
+open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
 open Lambdy.Lib.Interfaces.ILogger
 open Lambdy.Bin.Verbosity
@@ -12,9 +13,10 @@ open Lambdy.Bin.Help
 
 module Logger =
 
-    type Logger(colorScheme : ColorScheme, ?verbosity : Verbosity, ?lineNumber : bool) =
+    type Logger(colorScheme : ColorScheme, ?verbosity : Verbosity, ?lineNumber : bool, ?strictTerms : bool) =
         let verbosity = defaultArg verbosity Verbosity.Minimal
         let lineNumber = defaultArg lineNumber false
+        let strictTerms = defaultArg strictTerms false
         let lockObject = new obj ()
 
         // ------------- Helpers -------------------------------
@@ -38,44 +40,45 @@ module Logger =
 
         let handleSyntaxHelp () = printSyntaxHelp ()
 
-        let handleClearBuffer () = Console.Clear ()
-
         let handleCurrentScope bindings =
             let mutable i = 1
 
             for Name var, boundValue in bindings do
-                printfn $"{Indent}{i}) {var} <- {toString false boundValue}"
+                printfn $"{Indent}{i}) {var} <- {irToString strictTerms false boundValue}"
                 i <- i + 1
 
         let handleInterpreterOutput (Output (Line line, result)) =
             let lineStr = if lineNumber then $"[Line {line}]: " else String.Empty
 
             match result with
-            | Ok result -> Logger.PrintSuccess (lineStr + Lambdy.Lib.LambdaTerm.toString false result)
+            | Ok result -> Logger.PrintSuccess (lineStr + lamToString strictTerms false result)
             | Error message -> Logger.PrintError (lineStr + message)
 
         // ------------- Normal --------------------------------
 
-        let handleStartedReducing = toString false >> printfn "%s"
+        let handleStartedReducing = irToString strictTerms false >> printfn "%s"
 
-        let handleCurrentTerm = toString false >> printfn "%s"
+        let handleCurrentTerm = irToString strictTerms false >> printfn "%s"
 
         let handleUnbinding (Name var) term =
-            printNormalLog "subst" $"{var} -> {toString false term}"
+            printNormalLog "subst" $"{var} -> {irToString strictTerms false term}"
 
         let handleAlphaConversion term (Name var) (Name sub) =
-            printNormalLog "alpha" $"{toString false term}: {var} -> {sub}"
+            printNormalLog "alpha" $"{irToString strictTerms true term}: {var} -> {sub}"
 
         let handleBetaReduction src body (Name var) sub =
-            printNormalLog "beta" $"{toString false src} -> {toString true body}[{var} := {toString false sub}]"
+            let srcStr = irToString strictTerms false src
+            let bodyStr = irToString strictTerms true body
+            let subStr = irToString strictTerms false sub
+            printNormalLog "beta" $"{srcStr} -> {bodyStr}[{var} := {subStr}]"
 
         // ------------- Detailed ------------------------------
 
         let handleCurrentlyReducing term =
-            printfn $"reducing {toString false term} ..."
+            printfn $"reducing {irToString strictTerms false term} ..."
 
         let handleNewBinding (Name var) value =
-            printDetailedLog "bind" $"{var} <- {toString false value}"
+            printDetailedLog "bind" $"{var} <- {irToString strictTerms false value}"
 
         let handleWasReset () =
             printDetailedLog "reset" "cleared current scope"
@@ -83,19 +86,20 @@ module Logger =
         // ------------- Diagnostic ----------------------------
 
         let handleSubstitution (Name var) sub =
-            printDiagnosticLog "subst" $"{var} -> {toString false sub}"
+            printDiagnosticLog "subst" $"{var} -> {irToString strictTerms false sub}"
 
         let handleBoundValue (Name var) value =
-            printDiagnosticLog "bind" $"{var} <- {toString false value}"
+            printDiagnosticLog "bind" $"{var} <- {irToString strictTerms false value}"
 
         let handleDelayedConversion term (Name var) (Name sub) =
-            printDiagnosticLog "delay" $"{toString false term}: {var} -> {sub}"
+            printDiagnosticLog "delay" $"{irToString strictTerms false term}: {var} -> {sub}"
+
+        // ------------- Arbitrary record handling -------------
 
         let handleRecord =
             function
             | Minimal WaitingForInput -> handleWaitingForInput ()
             | Minimal SyntaxHelp -> handleSyntaxHelp ()
-            | Minimal ClearBuffer -> handleClearBuffer ()
             | Minimal (CurrentScope bindings) -> handleCurrentScope bindings
             | Minimal (InterpreterOutput output) -> handleInterpreterOutput output
             | Normal (StartedReducing term) -> handleStartedReducing term
@@ -136,5 +140,8 @@ module Logger =
                     )
             }
 
+        member _.ClearBuffer () = Console.Clear ()
+
         interface ILogger with
             member this.LogAsync record = this.LogAsync record
+            member this.ClearBuffer () = this.ClearBuffer ()

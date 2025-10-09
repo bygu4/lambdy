@@ -12,7 +12,6 @@ module ILogger =
         | WaitingForInput
         | CurrentScope of (VariableName * IR) list
         | SyntaxHelp
-        | ClearBuffer
         | InterpreterOutput of InterpreterOutput
 
     type Normal =
@@ -45,7 +44,14 @@ module ILogger =
         /// Handle the given log record.
         abstract member LogAsync : LogRecord -> Task
 
+        abstract member ClearBuffer : unit -> unit
+
         static member TryLog (logger : ILogger option, record : LogRecord) =
             match logger with
             | Some logger -> logger.LogAsync record |> ignore
+            | None -> ()
+
+        static member TryClearBuffer (logger : ILogger option) =
+            match logger with
+            | Some logger -> logger.ClearBuffer ()
             | None -> ()

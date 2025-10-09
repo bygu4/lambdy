@@ -38,4 +38,4 @@ module LambdaTerm =
 
     let toLambdaTerm ir = toLambdaTerm' ir id
 
-    let toString parenthesize = toIR >> toString parenthesize
+    let lamToString strict parenthesize = toIR >> irToString strict parenthesize

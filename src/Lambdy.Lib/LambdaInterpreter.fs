@@ -2,6 +2,7 @@ namespace Lambdy.Lib
 
 open System
 open System.IO
+
 open FParsec
 
 open Lambdy.Lib.ParseTree
@@ -87,7 +88,9 @@ module LambdaInterpreter =
                     ILogger.TryLog (logger, Detailed WasReset)
                 | Scope -> logIfInteractive (Minimal <| CurrentScope reducer.Scope)
                 | Help -> logIfInteractive (Minimal SyntaxHelp)
-                | Clear -> logIfInteractive (Minimal ClearBuffer)
+                | Clear ->
+                    if interactive then
+                        ILogger.TryClearBuffer logger
                 | Exit -> reader.Close ()
 
                 None

@@ -8,8 +8,8 @@
 
   <ItemGroup>
     <Compile Include="Literals.fs" />
-    <Compile Include="ParseTree.fs" /><Compile Include="Parsers.fs" />
-    
+    <Compile Include="ParseTree.fs" />
+    <Compile Include="Parsers.fs" />
     <Compile Include="IR.fs" />
     <Compile Include="AST.fs" />
     <Compile Include="LambdaTerm.fs" />

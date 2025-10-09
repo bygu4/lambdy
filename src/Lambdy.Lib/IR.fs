@@ -19,22 +19,24 @@ module IR =
     let inline irApp left right = Application (left, right)
 
     [<TailCall>]
-    let rec private toString' parenthesize closing ir cont =
+    let rec private irToString' strict parenthesize closing ir cont =
         match ir with
         | Variable (Name var, _) -> cont var
         | Application (left, right) ->
             let closedAbstraction = parenthesize || closing
-            let parenthesizeLeft = left.IsAbstraction
+            let parenthesizeLeft = strict || left.IsAbstraction
 
             let parenthesizeRight =
-                right.IsApplication || right.IsAbstraction && not closedAbstraction
+                strict || right.IsApplication || right.IsAbstraction && not closedAbstraction
 
-            toString'
+            irToString'
+                strict
                 parenthesizeLeft
                 false
                 left
                 (fun leftStr ->
-                    toString'
+                    irToString'
+                        strict
                         parenthesizeRight
                         closing
                         right
@@ -46,8 +48,9 @@ module IR =
                         )
                 )
         | Abstraction (Name var, _, body) ->
-            toString'
-                false
+            irToString'
+                strict
+                strict
                 true
                 body
                 (fun bodyStr ->
@@ -57,7 +60,8 @@ module IR =
                     |> cont
                 )
 
-    let toString parenthesize ir = toString' parenthesize true ir id
+    let irToString strict parenthesize ir =
+        irToString' strict parenthesize true ir id
 
     [<TailCall>]
     let rec private freeVars' closure term cont =

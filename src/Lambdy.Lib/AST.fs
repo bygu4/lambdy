@@ -18,7 +18,7 @@ module AST =
     /// Build AST of a lambda term using the `primary` representation.
     /// Use CPS with the given `cont`.
     [<TailCall>]
-    let rec private buildTermAST' primary cont =
+    let rec buildTermAST' primary cont =
 
         /// Convert `primary` operand representation to the lambda term.
         let inline buildOperandAST primary cont =
