@@ -8,31 +8,31 @@ module Options =
     type Options private (sourceFile : string option, help : bool, verbose : bool, lineNumber : bool, error : bool) =
         struct
             /// Command line arguments for displaying help.
-            static member HelpArgs : string array = [| "-h" ; "--help" |]
+            static member HelpArgs = [| "-h" ; "--help" |]
 
             /// Command line arguments for printing detailed output to the console.
-            static member VerboseArgs : string array = [| "-v" ; "--verbose" |]
+            static member VerboseArgs = [| "-v" ; "--verbose" |]
 
             /// Command line arguments for printing source file line number with output.
-            static member LineNumberArgs : string array = [| "-n" ; "--line-number" |]
+            static member LineNumberArgs = [| "-n" ; "--line-number" |]
 
             /// A path of the source file to run the interpreter on.
-            member _.SourceFile : string option = sourceFile
+            member _.SourceFile = sourceFile
 
             /// Whether to display command line help.
-            member _.Help : bool = help
+            member _.Help = help
 
             /// Whether to print detailed output to the console.
-            member _.Verbose : bool = verbose
+            member _.Verbose = verbose
 
             /// Whether to print source file line number with output.
-            member _.LineNumber : bool = lineNumber
+            member _.LineNumber = lineNumber
 
             /// Whether the given command line arguments are invalid.
-            member _.Error : bool = error
+            member _.Error = error
 
             /// Get options from command line arguments.
-            static member GetFromArgs () : Options =
+            static member GetFromArgs () =
 
                 /// Get difference of `source` with `target` with a value indicating their intersection.
                 let removeMany source target =

@@ -21,17 +21,21 @@ let printHeaderWithHelp () =
     printOptionsHelp ()
     printSyntaxHelp ()
 
-let options = Options.GetFromArgs ()
+let checkForError (options : Options) =
+    if options.Error then
+        Logger.PrintError invalidArgsMessage
+        exit <| int ExitCode.InvalidArguments
+    else
+        options
 
-if options.Help then
-    printHeaderWithHelp ()
-    exit <| int ExitCode.Success
+let tryPrintHelp (options : Options) =
+    if options.Help then
+        printHeaderWithHelp ()
+        exit <| int ExitCode.Success
+    else
+        options
 
-if options.Error then
-    Logger.PrintError invalidArgsMessage
-    exit <| int ExitCode.InvalidArguments
-
-let interpreter =
+let createInterpreter (options : Options) =
     match options.SourceFile with
     | Some path ->
         try
@@ -48,9 +52,19 @@ let interpreter =
         let logger = new Logger (colorScheme, Verbosity.Normal, false)
         LambdaInterpreter.StartInteractive (logger = logger)
 
-using
-    interpreter
-    (fun interpreter ->
-        interpreter.RunToEnd () |> Seq.iter ignore
-        getExitCode interpreter |> int |> exit
-    )
+let runInterpreter (interpreter : LambdaInterpreter) =
+    using
+        interpreter
+        (fun interpreter ->
+            interpreter.RunToEnd () |> Seq.iter ignore
+            interpreter
+        )
+
+let exit = getExitCode >> int >> exit
+
+Options.GetFromArgs ()
+|> checkForError
+|> tryPrintHelp
+|> createInterpreter
+|> runInterpreter
+|> exit

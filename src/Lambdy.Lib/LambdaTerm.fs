@@ -12,9 +12,13 @@ module LambdaTerm =
         | Abstraction of VariableName * LambdaTerm
         | Application of LambdaTerm * LambdaTerm
 
+    // ============= Constructors =========================================
+
     let inline lamVar name = Variable name
     let inline lamAbs var body = Abstraction (var, body)
     let inline lamApp left right = Application (left, right)
+
+    // ============= LambdaTerm conversions ===============================
 
     [<TailCall>]
     let rec private toIR' term cont =

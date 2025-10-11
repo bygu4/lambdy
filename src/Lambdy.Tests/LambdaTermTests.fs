@@ -20,7 +20,9 @@ module LambdaTermTests =
     let lamI name = lamAbs (Name name) (lamVarTerm name)
     let lamOmega = lamAbs (Name "x") (lamApp (lamVarTerm "x") (lamVarTerm "x"))
 
-    let toStringInputs : (LambdaTerm * bool * bool) list =
+    // ============= Term to string conversion unit tests =================
+
+    let toStringInputs =
         [
             lamVarTerm "x", false, false
             lamVarTerm "smth", false, true
@@ -47,7 +49,7 @@ module LambdaTermTests =
             false
         ]
 
-    let toStringResults : string list =
+    let toStringResults =
         [
             "x"
             "smth"
@@ -71,11 +73,14 @@ module LambdaTermTests =
         ]
 
     let toStringTestCases =
-        List.zip toStringInputs toStringResults |> List.map TestCaseData
+        Seq.zip toStringInputs toStringResults
+        |> Seq.map (fun ((x, y, z), t) -> TestCaseData (x, y, z, t))
 
     [<TestCaseSource(nameof (toStringTestCases))>]
-    let testToString ((term, strict, parenthesize), expectedStr) =
+    let testToString term strict parenthesize expectedStr =
         term |> lamToString strict parenthesize |> should equal expectedStr
+
+    // ============= Lambda term conversions properties ===================
 
     // Arbitrary type for generating lambda terms, avoiding stack overflows.
     type GenTerm =

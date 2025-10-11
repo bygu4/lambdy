@@ -29,8 +29,8 @@ module ILogger =
 
     type Diagnostic =
         | Substitution of VariableName * IR
-        | BoundValue of VariableName * IR
-        | DelayedConversion of IR * VariableName * VariableName
+        | ValueBinding of VariableName * IR
+        | DelayedAlphaConv of IR * VariableName * VariableName
 
     type LogRecord =
         | Minimal of Minimal

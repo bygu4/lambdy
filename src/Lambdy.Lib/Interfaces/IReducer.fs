@@ -6,7 +6,13 @@ open Lambdy.Lib.LambdaTerm
 
 module IReducer =
 
-    type ReductionResult = Result<LambdaTerm, string>
+    type NormalForm = | NormalForm of LambdaTerm
+    type ReductionCount = | ReductionCount of int
+    type ErrorMessage = | ErrorMessage of string
+
+    type ReductionResult =
+        | Success of NormalForm * ReductionCount
+        | Failure of ErrorMessage
 
     /// An interface representing a class handling the lambda term reduction logic.
     [<Interface>]

@@ -44,7 +44,7 @@ module Parsers =
     let variable = regex VariablePattern >> exceptKeyword |>> Name
 
     /// Accept one or more of variable names, separated and optionally surrounded by whitespace.
-    let variables = (?<) (sepEndBy1 variable whitespace)
+    let variables = (?<) (sepEndBy1 variable whitespace) |>> Names
 
     /// Accept a primary lambda term representation.
     let term, termRef = createParserForwardedToRef ()

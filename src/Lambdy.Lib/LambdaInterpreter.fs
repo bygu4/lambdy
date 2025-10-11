@@ -8,16 +8,35 @@ open FParsec
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.Parsers
 open Lambdy.Lib.AST
+open Lambdy.Lib.Strategy
 open Lambdy.Lib.Reducer
-open Lambdy.Lib.Interfaces.ILogger
+open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
+open Lambdy.Lib.Interfaces.ILogger
 
 module LambdaInterpreter =
 
     /// Class representing the lambda term interpreter.
-    type LambdaInterpreter private (stream : Stream, interactive : bool, ?reductionLimit : int, ?logger : ILogger) =
+    type LambdaInterpreter
+        private
+        (
+            stream : Stream,
+            interactive : bool,
+            ?strategy : Strategy,
+            ?etaConversions : bool,
+            ?reductionLimit : int,
+            ?logger : ILogger
+        )
+        =
         let reader = new StreamReader (stream)
-        let reducer = new Reducer (?reductionLimit = reductionLimit, ?logger = logger)
+
+        let reducer =
+            new Reducer (
+                ?strategy = strategy,
+                ?etaConversions = etaConversions,
+                ?reductionLimit = reductionLimit,
+                ?logger = logger
+            )
 
         let mutable currentLine = 0
         let mutable syntaxError = false
@@ -27,12 +46,18 @@ module LambdaInterpreter =
             if interactive then
                 ILogger.TryLog (logger, record)
 
+        // ============= Creating an interpreter ==============================
+
         /// Create an interactive interpreter for the standard console input.
         /// Use `verbose` option to print logs to the console.
-        static member StartInteractive (?reductionLimit : int, ?logger : ILogger) =
+        static member StartInteractive
+            (?strategy : Strategy, ?etaConversions : bool, ?reductionLimit : int, ?logger : ILogger)
+            =
             new LambdaInterpreter (
                 stream = Console.OpenStandardInput (),
                 interactive = true,
+                ?strategy = strategy,
+                ?etaConversions = etaConversions,
                 ?reductionLimit = reductionLimit,
                 ?logger = logger
             )
@@ -40,13 +65,19 @@ module LambdaInterpreter =
         /// Create an interpreter to run on a source file at the given `path`.
         /// Use `verbose` option to print logs to the console.
         /// Use `lineNumber` option to add line number to the output.
-        static member StartOnFile (path : string, ?reductionLimit : int, ?logger : ILogger) =
+        static member StartOnFile
+            (path : string, ?strategy : Strategy, ?etaConversions : bool, ?reductionLimit : int, ?logger : ILogger)
+            =
             new LambdaInterpreter (
                 stream = File.OpenRead path,
                 interactive = false,
+                ?strategy = strategy,
+                ?etaConversions = etaConversions,
                 ?reductionLimit = reductionLimit,
                 ?logger = logger
             )
+
+        // ============= Properties ===========================================
 
         /// Whether the interpreter is being run in console.
         member _.IsInteractive = interactive
@@ -64,13 +95,15 @@ module LambdaInterpreter =
         /// Whether max allowed depth of recursion exceeded during the term reduction.
         member _.ReductionFailed = reductionFailed
 
+        // ============= Running the interpreter ==============================
+
         /// Run the interpreter while possible and yield the interpretation results.
         member this.RunToEnd () : InterpreterOutput seq =
             seq {
                 while this.CanRun do
-                    let result = this.RunOnNextLineAsync () |> Async.RunSynchronously
+                    let output = this.RunOnNextLineAsync () |> Async.RunSynchronously
 
-                    match result with
+                    match output with
                     | Some output ->
                         ILogger.TryLog (logger, Minimal <| InterpreterOutput output)
                         yield output
@@ -106,10 +139,10 @@ module LambdaInterpreter =
                     ILogger.TryLog (logger, Normal <| StartedReducing term)
 
                     match reducer.Reduce term with
-                    | Result.Ok _ as result -> Output (Line currentLine, result) |> Some
-                    | _ as err ->
+                    | Success _ as success -> Output (Line currentLine, success) |> Some
+                    | _ as failure ->
                         reductionFailed <- true
-                        Output (Line currentLine, err) |> Some
+                        Output (Line currentLine, failure) |> Some
                 | Command command -> runCommand command
                 | Empty -> None
 
@@ -121,10 +154,10 @@ module LambdaInterpreter =
 
                 return
                     match parserResult with
-                    | Success (expr, _, _) -> interpretExpression expr
-                    | Failure (msg, _, _) ->
+                    | ParserResult.Success (expr, _, _) -> interpretExpression expr
+                    | ParserResult.Failure (msg, _, _) ->
                         syntaxError <- true
-                        Output (Line currentLine, Result.Error msg) |> Some
+                        Output (Line currentLine, Failure <| ErrorMessage msg) |> Some
             }
 
         /// Free resources used by the interpreter.

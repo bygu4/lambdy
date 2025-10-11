@@ -6,17 +6,29 @@ module IR =
 
     type IR =
         | Variable of VariableName * BoundValue
-        | Abstraction of VariableName * DelayedConversion * IR
+        | Abstraction of VariableName * DelayedAlpha * IR
         | Application of IR * IR
 
-    and BoundValue = IR option
-    and DelayedConversion = VariableName option
+    and BoundValue = | BoundValue of IR option
+    and DelayedAlpha = | DelayedAlpha of VariableName option
 
-    let inline irVar name = Variable (name, None)
-    let inline irVarBound name boundValue = Variable (name, boundValue)
-    let inline irAbs var body = Abstraction (var, None, body)
-    let inline irAbsConv var conv body = Abstraction (var, conv, body)
+    // ============= Constructors =========================================
+
+    let irBoundVal = Some >> BoundValue
+    let irDelayedAlpha = Some >> DelayedAlpha
+
+    let inline irVar name = Variable (name, BoundValue None)
+    let inline irVarBound name boundValue = Variable (name, irBoundVal boundValue)
+
+    let inline irAbs var body =
+        Abstraction (var, DelayedAlpha None, body)
+
+    let inline irAbsAlpha var alpha body =
+        Abstraction (var, irDelayedAlpha alpha, body)
+
     let inline irApp left right = Application (left, right)
+
+    // ============= IR to string conversion ==============================
 
     [<TailCall>]
     let rec private irToString' strict parenthesize closing ir cont =
@@ -63,10 +75,12 @@ module IR =
     let irToString strict parenthesize ir =
         irToString' strict parenthesize true ir id
 
+    // ============= Obtaining free variables =============================
+
     [<TailCall>]
     let rec private freeVars' closure term cont =
         match term with
-        | Variable (var, Some boundValue) when closure ->
+        | Variable (var, BoundValue (Some boundValue)) when closure ->
             freeVars' closure boundValue (fun valueVars -> Set.add var valueVars |> cont)
         | Variable (var, _) -> set [ var ] |> cont
         | Abstraction (var, _, body) -> freeVars' closure body (fun bodyVars -> Set.remove var bodyVars |> cont)

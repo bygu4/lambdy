@@ -18,7 +18,7 @@ module AST =
     /// Build AST of a lambda term using the `primary` representation.
     /// Use CPS with the given `cont`.
     [<TailCall>]
-    let rec buildTermAST' primary cont =
+    let rec private buildTermAST' primary cont =
 
         /// Convert `primary` operand representation to the lambda term.
         let inline buildOperandAST primary cont =
@@ -42,12 +42,12 @@ module AST =
         match primary with
         | ParseTree.Application (operand, rest) ->
             buildOperandAST operand (fun operandAST -> buildApplicationAST operandAST rest cont)
-        | ParseTree.Abstraction (head :: tail, body) ->
+        | ParseTree.Abstraction (Names (head :: tail), body) ->
             if tail.IsEmpty then
                 buildTermAST' body (fun bodyAST -> irAbs head bodyAST |> cont)
             else
-                buildTermAST' (ParseTree.Abstraction (tail, body)) (fun absAST -> irAbs head absAST |> cont)
-        | ParseTree.Abstraction ([], _) -> raise (ArgumentException "Abstraction received empty variable list")
+                buildTermAST' (ParseTree.Abstraction (Names tail, body)) (fun absAST -> irAbs head absAST |> cont)
+        | ParseTree.Abstraction (Names [], _) -> raise (ArgumentException "Abstraction received empty variable list.")
 
     /// Build AST of a lambda term using the `primary` representation.
     let buildTermAST primary = buildTermAST' primary id
@@ -56,6 +56,6 @@ module AST =
     let buildExpressionAST primary =
         match primary with
         | ParseTree.Binding (variable, term) -> Binding (variable, buildTermAST term)
-        | ParseTree.Result term -> Result (buildTermAST term)
+        | ParseTree.Result term -> Result <| buildTermAST term
         | ParseTree.Command command -> Command command
         | ParseTree.Empty -> Empty

@@ -5,6 +5,7 @@ open System
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
 open Lambdy.Lib.LambdaTerm
+open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
 open Lambdy.Lib.Interfaces.ILogger
 open Lambdy.Bin.Verbosity
@@ -19,12 +20,10 @@ module Logger =
         let strictTerms = defaultArg strictTerms false
         let lockObject = new obj ()
 
-        // ------------- Helpers -------------------------------
+        // ============= Helpers ==============================================
 
         let printLog prefixColor msgColor prefix msg =
-            if prefix <> String.Empty then
-                Logger.PrintfColorized prefixColor $"[{prefix}]: "
-
+            Logger.PrintfColorized prefixColor $"[{prefix}]: "
             Logger.PrintfnColorized msgColor msg
 
         let printNormalLog = printLog colorScheme.AccentColor colorScheme.TextColor
@@ -34,7 +33,8 @@ module Logger =
         let printDiagnosticLog =
             printLog colorScheme.DiagnosticColor colorScheme.DiagnosticColor
 
-        // ------------- Minimal -------------------------------
+        // ============= Record handlers ======================================
+        // ------------- Minimal --------------------------------------
 
         let handleWaitingForInput () = printf InputPointer
 
@@ -51,10 +51,10 @@ module Logger =
             let lineStr = if lineNumber then $"[Line {line}]: " else String.Empty
 
             match result with
-            | Ok result -> Logger.PrintSuccess (lineStr + lamToString strictTerms false result)
-            | Error message -> Logger.PrintError (lineStr + message)
+            | Success (NormalForm term, _) -> Logger.PrintSuccess (lineStr + lamToString strictTerms false term)
+            | Failure (ErrorMessage message) -> Logger.PrintError (lineStr + message)
 
-        // ------------- Normal --------------------------------
+        // ------------- Normal ---------------------------------------
 
         let handleStartedReducing = irToString strictTerms false >> printfn "%s"
 
@@ -75,7 +75,7 @@ module Logger =
             let subStr = irToString strictTerms false sub
             printNormalLog "beta" $"{srcStr} -> {bodyStr}[{var} := {subStr}]"
 
-        // ------------- Detailed ------------------------------
+        // ------------- Detailed -------------------------------------
 
         let handleCurrentlyReducing term =
             printfn $"reducing {irToString strictTerms false term} ..."
@@ -86,18 +86,18 @@ module Logger =
         let handleWasReset () =
             printDetailedLog "reset" "cleared current scope"
 
-        // ------------- Diagnostic ----------------------------
+        // ------------- Diagnostic -----------------------------------
 
         let handleSubstitution (Name var) sub =
             printDiagnosticLog "subst" $"{var} -> {irToString strictTerms false sub}"
 
-        let handleBoundValue (Name var) value =
+        let handleValueBinding (Name var) value =
             printDiagnosticLog "bind" $"{var} <- {irToString strictTerms false value}"
 
         let handleDelayedConversion term (Name var) (Name sub) =
             printDiagnosticLog "delay" $"{irToString strictTerms false term}: {var} -> {sub}"
 
-        // ------------- Arbitrary record handling -------------
+        // ============= Arbitrary record handler =============================
 
         let handleRecord =
             function
@@ -109,16 +109,16 @@ module Logger =
             | Normal (CurrentTerm term) -> handleCurrentTerm term
             | Normal (Unbinding (var, term)) -> handleUnbinding var term
             | Normal (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
-            | Normal (EtaConversion (term, left)) -> handleEtaConversion term left
+            | Normal (EtaConversion (term, res)) -> handleEtaConversion term res
             | Normal (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
             | Detailed (CurrentlyReducing term) -> handleCurrentlyReducing term
             | Detailed (NewBinding (var, value)) -> handleNewBinding var value
             | Detailed WasReset -> handleWasReset ()
             | Diagnostic (Substitution (var, sub)) -> handleSubstitution var sub
-            | Diagnostic (BoundValue (var, value)) -> handleBoundValue var value
-            | Diagnostic (DelayedConversion (term, var, sub)) -> handleDelayedConversion term var sub
+            | Diagnostic (ValueBinding (var, value)) -> handleValueBinding var value
+            | Diagnostic (DelayedAlphaConv (term, var, sub)) -> handleDelayedConversion term var sub
 
-        // ------------- Members -------------------------------
+        // ============= Members ==============================================
 
         static member PrintSuccess str =
             Logger.PrintfnColorized defaultSuccessColor str

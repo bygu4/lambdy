@@ -1,16 +1,14 @@
 namespace Lambdy.Lib.Interfaces
 
-open Lambdy.Lib.LambdaTerm
+open Lambdy.Lib.Interfaces.IReducer
 
 module ILambdaInterpreter =
-
-    type InterpretationResult = Result<LambdaTerm, string>
 
     /// The number of line of the source given to the interpreter.
     type LineNumber = | Line of int
 
     /// The output of the interpreter.
-    type InterpreterOutput = | Output of LineNumber * InterpretationResult
+    type InterpreterOutput = | Output of LineNumber * ReductionResult
 
     /// An interface representing the lambda calculus interpreter.
     [<Interface>]

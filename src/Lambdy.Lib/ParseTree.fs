@@ -7,7 +7,7 @@ module ParseTree =
     type VariableName = | Name of string
 
     /// A list of variables.
-    type VariableNames = VariableName list
+    type VariableNames = | Names of VariableName list
 
     /// A special command for managing the interpreter execution.
     type SpecialCommand =

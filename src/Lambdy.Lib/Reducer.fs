@@ -3,15 +3,20 @@
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.IR
+open Lambdy.Lib.Strategy
 open Lambdy.Lib.Interfaces.ILogger
 open Lambdy.Lib.Interfaces.IReducer
 
 module Reducer =
 
-    type Reducer(?reductionLimit : int, ?logger : ILogger) =
-        let mutable bindings : (VariableName * IR) list = []
+    type Reducer(?strategy : Strategy, ?etaConversions : bool, ?reductionLimit : int, ?logger : ILogger) =
+        let strategy = defaultArg strategy normalOrder
+        let etaConversions = defaultArg etaConversions true
 
-        // ------------- Diagnostic logging --------------------
+        let mutable bindings : (VariableName * IR) list = []
+        let mutable reductionCount = 0
+
+        // ============= Diagnostic logging ===================================
 
         let substitute var sub =
             ILogger.TryLog (logger, Diagnostic <| Substitution (var, sub))
@@ -20,18 +25,18 @@ module Reducer =
         let bindValue term var bindings =
             match Map.tryFind var bindings with
             | Some value ->
-                ILogger.TryLog (logger, Diagnostic <| BoundValue (var, value))
-                irVarBound var (Some value)
+                ILogger.TryLog (logger, Diagnostic <| ValueBinding (var, value))
+                irVarBound var value
             | None -> term
 
-        let delayConversion term x conv body =
-            match conv with
+        let delayConversion term x (DelayedAlpha alpha) body =
+            match alpha with
             | Some y ->
-                ILogger.TryLog (logger, Diagnostic <| DelayedConversion (term, x, y))
-                irAbsConv x conv body
-            | None -> irAbsConv x conv body
+                ILogger.TryLog (logger, Diagnostic <| DelayedAlphaConv (term, x, y))
+                irAbsAlpha x y body
+            | None -> irAbs x body
 
-        // ------------- Value binding -------------------------
+        // ============= Value binding ========================================
 
         [<TailCall>]
         let rec bindMany' bindings term cont =
@@ -56,13 +61,13 @@ module Reducer =
                     |> Seq.map (fun var -> bindings.[var] |> freeVars true)
                     |> Set.unionMany
 
-                let conv =
+                let alpha =
                     if Set.contains x freeVarsSub then
-                        Some <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
+                        irDelayedAlpha <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
                     else
-                        None
+                        DelayedAlpha None
 
-                bindMany' bindings body (fun boundBody -> delayConversion term x conv boundBody |> cont)
+                bindMany' bindings body (fun boundBody -> delayConversion term x alpha boundBody |> cont)
 
             | Application (left, right) ->
                 bindMany'
@@ -72,7 +77,7 @@ module Reducer =
 
         let bindMany bindings term = bindMany' bindings term id
 
-        // ------------- Substitution --------------------------
+        // ============= Substitution =========================================
 
         [<TailCall>]
         let rec substitute' var sub term cont =
@@ -80,17 +85,17 @@ module Reducer =
 
             | Variable (x, _) when x = var -> substitute var sub |> cont
 
-            | Abstraction (x, conv, body) when x <> var ->
+            | Abstraction (x, alpha, body) when x <> var ->
                 let freeVarsBody = freeVars false body
                 let freeVarsSub = freeVars true sub
 
                 let willSubstitute = Set.contains var freeVarsBody
                 let capturedX = Set.contains x freeVarsSub
 
-                let capturedConv =
-                    match conv with
-                    | Some y -> Set.contains y freeVarsSub
-                    | None -> false
+                let capturedAlpha =
+                    match alpha with
+                    | DelayedAlpha (Some y) -> Set.contains y freeVarsSub
+                    | DelayedAlpha None -> false
 
                 if willSubstitute then
                     let freeVarsBody = freeVars true body
@@ -105,8 +110,8 @@ module Reducer =
                             body
                             (fun convBody -> substitute' var sub convBody (fun subsBody -> irAbs y subsBody |> cont))
                     else
-                        let conv = if capturedConv then Some y else conv
-                        substitute' var sub body (fun subsBody -> delayConversion term x conv subsBody |> cont)
+                        let alpha = if capturedAlpha then irDelayedAlpha y else alpha
+                        substitute' var sub body (fun subsBody -> delayConversion term x alpha subsBody |> cont)
 
                 else
                     cont term
@@ -122,7 +127,7 @@ module Reducer =
 
         let substitute var sub term = substitute' var sub term id
 
-        // ------------- Normal logging ------------------------
+        // ============= Normal logging =======================================
 
         let currentTerm term root =
             ILogger.TryLog (logger, Normal <| CurrentTerm (root term))
@@ -148,98 +153,133 @@ module Reducer =
             let res = substitute var sub body
             currentTerm res root
 
-        // ------------- Reduction -----------------------------
+        // ============= Reduction ============================================
 
         [<TailCall>]
-        let rec reduce' ret count term root cont =
+        let rec reduce' curStrategy term root cont =
 
             let inline maybe fail step =
                 function
                 | Ok result -> step result
                 | _ as err -> fail err
 
-            let inline tryReduce count term body var sub root cont =
+            let inline tryBetaReduction term body var sub root cont =
                 match reductionLimit with
-                | Some limit when count >= limit -> cont <| Error $"Exceeded the reduction limit: {reductionLimit}."
-                | _ -> betaReduction term body var sub root |> Ok |> cont
+                | Some limit when reductionCount >= limit -> cont <| Error $"Exceeded the reduction limit: {limit}."
+                | _ ->
+                    reductionCount <- reductionCount + 1
+                    betaReduction term body var sub root |> Ok |> cont
 
-            let inline reduceVar ret count term var boundValue root cont =
+            let inline reduceVar curStrategy term var boundValue root cont =
                 match boundValue with
-                | Some boundValue -> reduce' ret count (unbind var boundValue root) root cont
+                | BoundValue (Some boundValue) -> reduce' curStrategy (unbind var boundValue root) root cont
                 | _ -> cont <| Ok term
 
-            let rec reduceAbs ret eta count term var conv body root cont =
-                match conv, body with
+            let inline reduceAbs (Strategy (_, Strong strong) as curStrategy) term var alpha body root cont =
+                match alpha, body with
 
-                | _, Application (left, right) when eta && right = irVar var ->
-                    let freeVarsLeft = freeVars false left
+                | _, Application (left, right) when
+                    etaConversions
+                    && right = irVar var
+                    && not <| Set.contains var (freeVars false left)
+                    ->
+                    reduce' curStrategy (etaConversion term left root) root cont
 
-                    if not <| Set.contains var freeVarsLeft then
-                        reduce' ret count (etaConversion term left root) root cont
-                    else
-                        reduceAbs ret false count term var conv body root cont
+                | DelayedAlpha (Some alpha), body when strong ->
+                    reduce' curStrategy (alphaConversion term var alpha body root) root cont
 
-                | Some conv, body when not ret -> reduce' ret count (alphaConversion term var conv body root) root cont
-
-                | _, body when not ret ->
+                | _, body when strong ->
                     reduce'
-                        ret
-                        count
+                        curStrategy
                         body
                         (fun body -> irAbs var body |> root)
                         (maybe cont (fun reducedBody -> irAbs var reducedBody |> Ok |> cont))
 
                 | _ -> cont <| Ok term
 
-            let inline reduceApp ret count term left right root cont =
+            let rec reduceApp (Strategy (Strict strict, _) as curStrategy) finish term left right root cont =
                 match left with
-                | Abstraction (var, _, body) ->
-                    tryReduce
-                        count
+
+                | Abstraction (var, _, body) when finish || not strict ->
+                    tryBetaReduction
                         term
                         body
                         var
                         right
                         root
-                        (maybe cont (fun reducedTerm -> reduce' ret (count + 1) reducedTerm root cont))
+                        (maybe cont (fun reducedTerm -> reduce' curStrategy reducedTerm root cont))
 
-                | _ ->
+                | _ when finish && strict -> irApp left right |> Ok |> cont
+
+                | _ when finish ->
                     reduce'
-                        true
-                        count
+                        strategy
+                        right
+                        (fun right -> irApp left right |> root)
+                        (maybe cont (fun reducedRight -> irApp left reducedRight |> Ok |> cont))
+
+                | _ when strict ->
+                    reduce'
+                        curStrategy
                         left
                         (fun left -> irApp left right |> root)
                         (maybe
                             cont
                             (fun reducedLeft ->
-                                match reducedLeft with
-                                | Abstraction _ -> reduce' ret count (irApp reducedLeft right) root cont
-                                | _ ->
-                                    reduce'
-                                        false
-                                        count
-                                        right
-                                        (fun right -> irApp reducedLeft right |> root)
-                                        (maybe cont (fun reducedRight -> irApp reducedLeft reducedRight |> Ok |> cont))
+                                reduce'
+                                    curStrategy
+                                    right
+                                    (fun right -> irApp reducedLeft right |> root)
+                                    (maybe
+                                        cont
+                                        (fun reducedRight ->
+                                            reduceApp
+                                                curStrategy
+                                                true
+                                                (irApp reducedLeft reducedRight)
+                                                reducedLeft
+                                                reducedRight
+                                                root
+                                                cont
+                                        ))
                             ))
 
+                | _ ->
+                    reduce'
+                        callByName
+                        left
+                        (fun left -> irApp left right |> root)
+                        (maybe
+                            cont
+                            (fun reducedLeft ->
+                                reduceApp curStrategy true (irApp reducedLeft right) reducedLeft right root cont
+                            ))
+
+            ILogger.TryLog (logger, Detailed <| CurrentlyReducing term)
+
             match term with
-            | Variable (var, boundValue) -> reduceVar ret count term var boundValue root cont
-            | Abstraction (var, conv, body) -> reduceAbs ret true count term var conv body root cont
-            | Application (left, right) -> reduceApp ret count term left right root cont
+            | Variable (var, boundValue) -> reduceVar curStrategy term var boundValue root cont
+            | Abstraction (var, alpha, body) -> reduceAbs curStrategy term var alpha body root cont
+            | Application (left, right) -> reduceApp curStrategy false term left right root cont
 
-        let reduce term = reduce' false 0 term id id
+        let reduce term = reduce' strategy term id id
 
-        // ------------- IR to closure -------------------------
+        // ============= IR to closure ========================================
 
         [<TailCall>]
         let rec closure' term root cont =
             match term with
-            | Variable (var, None) -> lamVar var |> cont
-            | Variable (var, Some boundValue) -> closure' (unbind var boundValue root) root cont
-            | Abstraction (var, None, body) ->
+            | Variable (var, BoundValue None) -> lamVar var |> cont
+            | Variable (var, BoundValue (Some boundValue)) -> closure' (unbind var boundValue root) root cont
+            | Abstraction (var, _, Application (left, right)) when
+                etaConversions
+                && right = irVar var
+                && not <| Set.contains var (freeVars false left)
+                ->
+                closure' (etaConversion term left root) root cont
+            | Abstraction (var, DelayedAlpha None, body) ->
                 closure' body (fun body -> irAbs var body |> root) (fun bodyClosure -> lamAbs var bodyClosure |> cont)
-            | Abstraction (x, Some y, body) -> closure' (alphaConversion term x y body root) root cont
+            | Abstraction (x, DelayedAlpha (Some y), body) -> closure' (alphaConversion term x y body root) root cont
             | Application (left, right) ->
                 closure'
                     left
@@ -253,23 +293,26 @@ module Reducer =
 
         let closure term = closure' term id id
 
-        // ------------- Members -------------------------------
+        // ============= Members ==============================================
 
         member _.Scope = List.rev bindings
 
-        member _.AddBinding (var, value) =
-            let boundValue = bindMany (bindings |> List.rev |> Map.ofList) value
+        member this.AddBinding (var, value) =
+            let boundValue = bindMany (this.Scope |> Map.ofList) value
             bindings <- (var, boundValue) :: bindings
 
         member _.Reset () = bindings <- []
 
-        member _.Reduce term =
-            term
-            |> bindMany (bindings |> List.rev |> Map.ofList)
-            |> reduce
-            |> function
-                | Ok result -> closure result |> Ok
-                | Error msg -> Error msg
+        member this.Reduce term =
+            reductionCount <- 0
+
+            let result = term |> bindMany (this.Scope |> Map.ofList) |> reduce
+
+            match result, strategy with
+            | Ok reducedTerm, Strategy (_, Strong true) ->
+                Success (NormalForm <| toLambdaTerm reducedTerm, ReductionCount reductionCount)
+            | Ok reducedTerm, _ -> Success (NormalForm <| closure reducedTerm, ReductionCount reductionCount)
+            | Error msg, _ -> Failure <| ErrorMessage msg
 
         interface IReducer with
             member this.Scope = this.Scope

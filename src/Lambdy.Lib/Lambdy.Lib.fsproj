@@ -13,8 +13,9 @@
     <Compile Include="IR.fs" />
     <Compile Include="AST.fs" />
     <Compile Include="LambdaTerm.fs" />
-    <Compile Include="Interfaces/ILambdaInterpreter.fs" />
+    <Compile Include="Strategy.fs" />
     <Compile Include="Interfaces/IReducer.fs" />
+    <Compile Include="Interfaces/ILambdaInterpreter.fs" />
     <Compile Include="Interfaces/ILogger.fs" />
     <Compile Include="Reducer.fs" />
     <Compile Include="LambdaInterpreter.fs" />

@@ -6,13 +6,16 @@ open NUnit.Framework
 open FsUnit
 
 open Lambdy.Lib.LambdaTerm
+open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
 open Lambdy.Lib.LambdaInterpreter
 
 module LambdaInterpreterTests =
 
     [<Literal>]
-    let ReductionLimit = 1000
+    let ReductionLimit = 10000
+
+    // ============= Input data ===========================================
 
     [<Literal>]
     let testFilesDir = "TestFiles"
@@ -25,6 +28,8 @@ module LambdaInterpreterTests =
 
     let unsuccessfulCasesSources =
         Directory.EnumerateFiles unsuccessfulCasesPath |> seq |> Seq.sort
+
+    // ============= Expected output ======================================
 
     let successfulCasesResults : (LineNumber * string option) list list =
         [
@@ -175,6 +180,8 @@ module LambdaInterpreterTests =
             ]
         ]
 
+    // ============= Test cases ===========================================
+
     let successfulCases =
         successfulCasesResults
         |> Seq.zip successfulCasesSources
@@ -187,25 +194,27 @@ module LambdaInterpreterTests =
 
     let testCases = Seq.append successfulCases unsuccessfulCases |> Seq.map TestCaseData
 
+    // ============= Test callbacks =======================================
+
     let outputsMatch (expected : (LineNumber * string option) list) (actual : InterpreterOutput list) =
         actual.Length = expected.Length
         && Seq.zip actual expected
            |> Seq.map (
                function
-               | Output (Line actualLine, Ok actualRes), (Line expectedLine, Some expectedRes) ->
+               | Output (Line actualLine, Success (NormalForm actualRes, _)), (Line expectedLine, Some expectedRes) ->
                    actualLine = expectedLine && lamToString false false actualRes = expectedRes
-               | Output (Line actualLine, Error _), (Line expectedLine, None) -> actualLine = expectedLine
+               | Output (Line actualLine, Failure _), (Line expectedLine, None) -> actualLine = expectedLine
                | _ -> false
            )
            |> Seq.forall ((=) true)
 
     [<TestCaseSourceAttribute(nameof (testCases))>]
-    let testInterpreter (sourceFile : string, expectedOutput : (LineNumber * string option) list, shouldFail : bool) =
+    let testInterpreter sourceFile expectedOutputs shouldFail =
         let interpreter =
-            LambdaInterpreter.StartOnFile (sourceFile, reductionLimit = ReductionLimit)
+            LambdaInterpreter.StartOnFile (path = sourceFile, etaConversions = false, reductionLimit = ReductionLimit)
 
-        let output = interpreter.RunToEnd () |> Seq.toList
-        output |> outputsMatch expectedOutput |> should be True
+        let outputs = interpreter.RunToEnd () |> Seq.toList
+        outputs |> outputsMatch expectedOutputs |> should be True
 
         (interpreter.SyntaxError || interpreter.ReductionFailed)
         |> should equal shouldFail
