@@ -5,7 +5,7 @@ module Literals =
 
     /// A regex pattern representing the variable name.
     [<Literal>]
-    let VariablePattern = @"[a-zA-Z][a-zA-Z0-9_]*"
+    let VariablePattern = @"[a-zA-Z][a-zA-Z0-9_']*"
 
     /// Keyword for variable declaration.
     [<Literal>]
@@ -31,16 +31,23 @@ module Literals =
     [<Literal>]
     let ExitKeyword = "exit"
 
+    [<Literal>]
+    let MainLambdaChar = 'λ'
+
+    [<Literal>]
+    let SecondaryLambdaChar = '\\'
+
+    [<Literal>]
+    let SeparatorChar = '.'
+
+    [<Literal>]
+    let CommandChar = '!'
+
+    [<Literal>]
+    let CommentChar = '#'
+
     /// The list of defined keywords.
-    let keywords =
-        [
-            DeclarationKeyword
-            ResetKeyword
-            ScopeKeyword
-            HelpKeyword
-            ClearKeyword
-            ExitKeyword
-        ]
+    let reservedNames = [ DeclarationKeyword ]
 
     /// Whether the given `str` is reserved as a keyword.
-    let isKeyword str = List.contains str keywords
+    let isReserved str = List.contains str reservedNames

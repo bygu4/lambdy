@@ -148,6 +148,9 @@ module ReducerTests =
             irApp (irApp irOmega irOmega) (irApp irOmega irOmega)
             irApp irY (irVarTerm "x")
             irApp irY irY
+            irApp
+                (irAbs (Name "x") (irApp (irApp (irVarTerm "x") (irVarTerm "x")) (irVarTerm "x")))
+                (irAbs (Name "x") (irApp (irApp (irVarTerm "x") (irVarTerm "x")) (irVarTerm "x")))
 
             // Alpha conversion required
             irApp (irAbs (Name "t") (irAbs (Name "y") (irVarTerm "t"))) (irApp (irVarTerm "x") (irVarTerm "y"))
@@ -170,6 +173,9 @@ module ReducerTests =
                         (irVarTerm "a'"))
                     (irVarTerm "a''"))
                 (irVarTerm "a'''")
+            irApp
+                (irAbs (Name "t") (irAbs (Name "x") (irAbs (Name "y") (irApp (irVarTerm "t") (irVarTerm "t")))))
+                (irApp (irVarTerm "x") (irVarTerm "y"))
 
             // Bound value
             irVarBound (Name "x") (irVarTerm "value")
@@ -259,6 +265,7 @@ module ReducerTests =
             ShouldFail
             ShouldFail
             ShouldFail
+            ShouldFail
 
             // Alpha conversion required
             ShouldSucceed (
@@ -285,6 +292,15 @@ module ReducerTests =
                 NormalForm
                 <| lamApp (lamApp (lamVarTerm "a'''") (lamVarTerm "a''")) (lamVarTerm "a'"),
                 ReductionCount 3
+            )
+            ShouldSucceed (
+                NormalForm
+                <| lamAbs
+                    (Name "x'")
+                    (lamAbs
+                        (Name "y'")
+                        (lamApp (lamApp (lamVarTerm "x") (lamVarTerm "y")) (lamApp (lamVarTerm "x") (lamVarTerm "y")))),
+                ReductionCount 1
             )
 
             // Bound value
@@ -552,6 +568,7 @@ module ReducerTests =
             irApp (irAbs (Name "a'") (irAbs (Name "a") (irApp (irVarTerm "a'") (irVarTerm "a")))) (irVarTerm "a")
             irAbs (Name "K") (irAbs (Name "x") (irApp (irVarTerm "K") (irVarTerm "x")))
             irAbs (Name "qqq") (irApp (irVarTerm "Z") (irAbs (Name "t") (irApp (irVarTerm "P") (irVarTerm "t"))))
+            irAbsAlpha (Name "x") (Name "x'") (irApp (irVarTerm "Z") (irVarTerm "x"))
         ]
 
     let expectedResults_WithEta =
@@ -574,6 +591,7 @@ module ReducerTests =
                 NormalForm <| lamAbs (Name "qqq") (lamApp (lamVarTerm "Z") (lamVarTerm "P")),
                 ReductionCount 0
             )
+            ShouldSucceed (NormalForm <| lamVarTerm "Z", ReductionCount 0)
         ]
 
     let expectedResults_WithoutEta =
@@ -599,7 +617,6 @@ module ReducerTests =
                 <| lamApp (lamVarTerm "A") (lamAbs (Name "VAR") (lamApp (lamVarTerm "A") (lamVarTerm "VAR"))),
                 ReductionCount 0
             )
-
             ShouldSucceed (
                 NormalForm
                 <| lamAbs (Name "Q") (lamApp (lamApp (lamVarTerm "T") lamOmega) (lamVarTerm "Q")),
@@ -620,6 +637,10 @@ module ReducerTests =
                 <| lamAbs
                     (Name "qqq")
                     (lamApp (lamVarTerm "Z") (lamAbs (Name "t") (lamApp (lamVarTerm "P") (lamVarTerm "t")))),
+                ReductionCount 0
+            )
+            ShouldSucceed (
+                NormalForm <| lamAbs (Name "x'") (lamApp (lamVarTerm "Z") (lamVarTerm "x'")),
                 ReductionCount 0
             )
         ]

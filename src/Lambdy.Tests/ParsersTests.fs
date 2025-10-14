@@ -9,7 +9,7 @@ open Lambdy.Lib.Parsers
 
 module ParsersTests =
 
-    // ============= Helpers ==============================================
+    // ============= Constructors =============================================
 
     let vars = List.map Name >> Names
     let abs names term = Abstraction (vars names, term)
@@ -41,7 +41,7 @@ module ParsersTests =
     let brVar = varOp >> brApp1
     let brVarTerm = brVar >> app1
 
-    // ============= Test callbacks =======================================
+    // ============= Test callbacks ===========================================
 
     let runTest (parser : Parser<'a, unit>) (testCases : (string * 'a option) seq) =
         for input, expectedResult in testCases do
@@ -53,7 +53,7 @@ module ParsersTests =
             | _ -> failwith "Results don't match!"
 
     [<Test>]
-    let testParser_WhiteSpace () =
+    let testParser_Whitespace () =
         [
             "", None
             " ", Some ()
@@ -64,7 +64,7 @@ module ParsersTests =
         |> runTest whitespace
 
     [<Test>]
-    let testParser_WhiteSpaceOpt () =
+    let testParser_WhitespaceOpt () =
         [
             "", Some ()
             "\t", Some ()
@@ -75,13 +75,14 @@ module ParsersTests =
         |> runTest whitespaceOpt
 
     [<Test>]
-    let testParser_InputEnd () =
+    let testParser_Comment () =
         [
-            "", Some ()
-            "     ", Some ()
-            "\n", Some ()
-            "   \n", Some ()
-            "a12", None
+            "# this is a comment", Some ()
+            "#", Some ()
+            "#      ", Some ()
+            "    #", None
+            "   \n", None
+            "a b c", None
             "  1   ", None
         ]
         |> runTest inputEnd
@@ -102,8 +103,11 @@ module ParsersTests =
             "let", None
             "letvar", Some <| Name "letvar"
             "not_a_let", Some <| Name "not_a_let"
-            "exit", None
-            "scope", None
+            "exit  ", Some <| Name "exit"
+            "scope", Some <| Name "scope"
+            "x''", Some <| Name "x''"
+            "qwert'''_yuiop", Some <| Name "qwert'''_yuiop"
+            "   a", None
         ]
         |> runTest variable
 
@@ -112,15 +116,16 @@ module ParsersTests =
         [
             "", None
             "a", Some <| vars [ "a" ]
-            "X Y Z", Some <| vars [ "X" ; "Y" ; "Z" ]
+            "    X Y Z", None
             "x1 x2 x3 x4", Some <| vars [ "x1" ; "x2" ; "x3" ; "x4" ]
             "v_1     v_2 v_3", Some <| vars [ "v_1" ; "v_2" ; "v_3" ]
             "a _ b", Some <| vars [ "a" ]
             "1 2", None
-            "  ololo ololo  ", Some <| vars [ "ololo" ; "ololo" ]
+            "ololo ololo  ", Some <| vars [ "ololo" ; "ololo" ]
             "first, second", Some <| vars [ "first" ]
             "fst   snd thd   \t\n", Some <| vars [ "fst" ; "snd" ; "thd" ]
             "% VAR ^", None
+            "x'  x''  x'''", Some <| vars [ "x'" ; "x''" ; "x'''" ]
         ]
         |> runTest variables
 
@@ -173,20 +178,20 @@ module ParsersTests =
             "abc.d", None
             "\\FST SND", None
             "\\x.  ", None
-            "\\  . U V W", None
+            "λ  . U V W", None
             "\\ . ", None
             "\\x.x", Some <| abs [ "x" ] (varTerm "x")
-            "\\a b c.d", Some <| abs [ "a" ; "b" ; "c" ] (varTerm "d")
+            "λa b c.d", Some <| abs [ "a" ; "b" ; "c" ] (varTerm "d")
             "\\var1    var2.(var3)", Some <| abs [ "var1" ; "var2" ] (brVarTerm "var3")
             "\\_a.b", None
             "\\x  y  z  (k)", None
-            "\\x.\\y.\\z.x", Some <| abs [ "x" ] (abs [ "y" ] (abs [ "z" ] (varTerm "x")))
-            "\\x y z.x y z", Some <| abs [ "x" ; "y" ; "z" ] (app3 (varOp "x") (varOp "y") (varOp "z"))
+            "λx.λy.\\z.x", Some <| abs [ "x" ] (abs [ "y" ] (abs [ "z" ] (varTerm "x")))
+            "λx y z.x y z", Some <| abs [ "x" ; "y" ; "z" ] (app3 (varOp "x") (varOp "y") (varOp "z"))
             "\\   u v  .  \\x. x v", Some <| abs [ "u" ; "v" ] (abs [ "x" ] (app2 (varOp "x") (varOp "v")))
             "\\ A   B C. \t B (C A)",
             Some
             <| abs [ "A" ; "B" ; "C" ] (app2 (varOp "B") (brApp2 (varOp "C") (varOp "A")))
-            "\\first second.\\var.first second",
+            "λfirst second.λvar.first second",
             Some
             <| abs [ "first" ; "second" ] (abs [ "var" ] (app2 (varOp "first") (varOp "second")))
         ]
@@ -197,7 +202,7 @@ module ParsersTests =
         [
             "_q", None
             "\\x.\\y", None
-            "A B (x.y)", Some <| app2 (varOp "A") (varOp "B")
+            "A B (x.y)", None
             "var1", Some <| varTerm "var1"
             "((ololo) )", Some <| app1 (brApp1 (brVar "ololo"))
             "(\\x y.x)", Some <| brAbsTerm [ "x" ; "y" ] (varTerm "x")
@@ -232,7 +237,7 @@ module ParsersTests =
             "foo", None
             "bar ololo", None
             "let let", None
-            "let help", None
+            "let help", Some <| Name "help"
             "let exitCode", Some <| Name "exitCode"
         ]
         |> runTest declaration
@@ -247,10 +252,10 @@ module ParsersTests =
             "let A B", None
             "let x != y", None
             "foo bar = baz", None
-            "let v1    =   v2", Some <| Binding (Name "v1", varTerm "v2")
+            "let v1    =   v2   ", Some <| Binding (Name "v1", varTerm "v2")
             "let term = ", None
             "let let = X Y Z", None
-            "let clear = I x x", None
+            "let clear = I x x", Some <| Binding (Name "clear", app3 (varOp "I") (varOp "x") (varOp "x"))
             "let test = (\\x.x y)", Some <| Binding (Name "test", brAbsTerm [ "x" ] (app2 (varOp "x") (varOp "y")))
         ]
         |> runTest binding
@@ -258,37 +263,40 @@ module ParsersTests =
     [<Test>]
     let testParser_Command () =
         [
-            "reset", Some <| Command Reset
-            "scope", Some <| Command Scope
-            "help", Some <| Command Help
-            "clear", Some <| Command Clear
-            "exit", Some <| Command Exit
+            "exit", None
+            "!   help", None
+            "!reset", Some <| Command Reset
+            "!help", Some <| Command Help
+            "!clear   ", Some <| Command Clear
+            "!exit", Some <| Command Exit
             "not_help", None
-            "exitCode", Some <| Command Exit
+            "!exitCode", Some <| Command Exit
             "   clear", None
-            "exit  \t  ", Some <| Command Exit
-            "reset vars", Some <| Command Reset
+            "!exit  \t  ", Some <| Command Exit
+            "!reset vars", Some <| Command Reset
+            "!trololo", None
             "exxxit", None
         ]
         |> runTest command
 
     [<Test>]
-    let testParser_Expression () =
+    let testParser_Expression_Interactive () =
         [
             "\n", Some Empty
             "       \n", Some Empty
+            " # this is a comment", Some Empty
             "  let I = \\x.x", None
             "_wewq", None
             "123\n", None
-            "a clear", None
+            "a clear", Some <| Result (app2 (varOp "a") (varOp "clear"))
             "\n  exit", None
             "", Some Empty
             "variable", Some <| Result (varTerm "variable")
             "let test = (\\x.x) y,  ", None
-            "help  \t", Some <| Command Help
-            "clear buff", None
+            "!help  \t#", Some <| Command Help
+            "!clear buff", None
             "let K  = \\x y.x", Some <| Binding (Name "K", abs [ "x" ; "y" ] (varTerm "x"))
-            "S K K \t\n", Some <| Result (app3 (varOp "S") (varOp "K") (varOp "K"))
+            "S K K   # some text \t\n", Some <| Result (app3 (varOp "S") (varOp "K") (varOp "K"))
             "let S = \\x y z.x z (y z)\n",
             Some
             <| Binding (
@@ -315,4 +323,41 @@ module ParsersTests =
                     (varOp "var")
             )
         ]
-        |> runTest expression
+        |> runTest (expression true)
+
+    [<Test>]
+    let testParser_Expression_Script () =
+        [
+            "\n", Some Empty
+            "help", Some <| Result (varTerm "help")
+            "!clear", None
+            "!exit", None
+            "!trololo", None
+            "       \n", Some Empty
+            " # this is a comment", Some Empty
+            "  let I = \\x.x", None
+            "_wewq", None
+            "123\n", None
+            "a clear", Some <| Result (app2 (varOp "a") (varOp "clear"))
+            "\n  exit", None
+            "", Some Empty
+            "variable", Some <| Result (varTerm "variable")
+            "let test = (\\x.x) y,  ", None
+            "!help  \t#", None
+            "!clear buff", None
+            "let K  = \\x y.x", Some <| Binding (Name "K", abs [ "x" ; "y" ] (varTerm "x"))
+            "S K K   # some text \t\n", Some <| Result (app3 (varOp "S") (varOp "K") (varOp "K"))
+            "let S = \\x y z.x z (y z)\n",
+            Some
+            <| Binding (
+                Name "S",
+                abs [ "x" ; "y" ; "z" ] (app3 (varOp "x") (varOp "z") (brApp2 (varOp "y") (varOp "z")))
+            )
+            "let ololo_exit = (\\x.\\y.x ) z\n",
+            Some
+            <| Binding (Name "ololo_exit", app2 (brAbs [ "x" ] (abs [ "y" ] (varTerm "x"))) (varOp "z"))
+            "let var  = \\x.x \\y.y",
+            Some
+            <| Binding (Name "var", abs [ "x" ] (closingAbs2 (varOp "x") [ "y" ] (varTerm "y")))
+        ]
+        |> runTest (expression false)

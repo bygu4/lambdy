@@ -15,6 +15,16 @@ module AST =
         | Command of SpecialCommand
         | Empty
 
+    [<TailCall>]
+    let rec private churchNumeral' n cont =
+        match n with
+        | 0 -> cont <| irVar (Name "x")
+        | n when n > 0 -> churchNumeral' (n - 1) (fun numeral -> irApp (irVar (Name "f")) numeral |> cont)
+        | _ -> raise <| ArgumentException "Expected a non-negative value."
+
+    let churchNumeral n =
+        churchNumeral' n (fun app -> irAbs (Name "f") (irAbs (Name "x") app))
+
     /// Build AST of a lambda term using the `primary` representation.
     /// Use CPS with the given `cont`.
     [<TailCall>]
@@ -47,7 +57,7 @@ module AST =
                 buildTermAST' body (fun bodyAST -> irAbs head bodyAST |> cont)
             else
                 buildTermAST' (ParseTree.Abstraction (Names tail, body)) (fun absAST -> irAbs head absAST |> cont)
-        | ParseTree.Abstraction (Names [], _) -> raise (ArgumentException "Abstraction received empty variable list.")
+        | ParseTree.Abstraction (Names [], _) -> raise <| ArgumentException "Abstraction received empty variable list."
 
     /// Build AST of a lambda term using the `primary` representation.
     let buildTermAST primary = buildTermAST' primary id

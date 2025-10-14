@@ -56,19 +56,19 @@ module LambdaTermTests =
             "trololo"
             "rerere bababa"
             "x y"
-            "(S (\\x.(x x)))"
-            "\\x.x y"
-            "(\\VAR_1.VAR_2)"
-            "(\\fst.(\\snd.(snd fst)))"
+            "(S (λx.(x x)))"
+            "λx.x y"
+            "(λVAR_1.VAR_2)"
+            "(λfst.(λsnd.(snd fst)))"
             "(A B) C"
             "X (Y Z)"
-            "\\A1.\\A2.\\A3.A4"
-            "(\\x.x) y"
-            "(\\U.V \\W.K)"
-            "(\\Y.Y) ((\\Y.Y) (\\Y.Y) \\Y.Y)"
-            "\\k.(((\\S.S) (\\S.S)) (\\S.S))"
-            "\\c.z \\y.\\x.x x"
-            "(\\x.(\\y.(\\z.((\\x.x) (\\x.(x x))))))"
+            "λA1.λA2.λA3.A4"
+            "(λx.x) y"
+            "(λU.V λW.K)"
+            "(λY.Y) ((λY.Y) (λY.Y) λY.Y)"
+            "λk.(((λS.S) (λS.S)) (λS.S))"
+            "λc.z λy.λx.x x"
+            "(λx.(λy.(λz.((λx.x) (λx.(x x))))))"
             "((T K) P) (K K)"
         ]
 
@@ -91,7 +91,7 @@ module LambdaTermTests =
                     let trim = fun (str : string) -> str.Trim ()
 
                     let isValidName =
-                        fun str -> not <| isKeyword str && Regex.IsMatch (str, $"^{VariablePattern}$")
+                        fun str -> not <| isReserved str && Regex.IsMatch (str, $"^{VariablePattern}$")
 
                     ArbMap.defaults
                     |> ArbMap.generate<string>

@@ -1,5 +1,6 @@
 namespace Lambdy.Lib
 
+open Lambdy.Lib.Literals
 open Lambdy.Lib.ParseTree
 
 module IR =
@@ -66,7 +67,7 @@ module IR =
                 true
                 body
                 (fun bodyStr ->
-                    let termStr = $"\\{var}.{bodyStr}"
+                    let termStr = $"{MainLambdaChar}{var}.{bodyStr}"
 
                     if parenthesize then $"({termStr})" else termStr
                     |> cont

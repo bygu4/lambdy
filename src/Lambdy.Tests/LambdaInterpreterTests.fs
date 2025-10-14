@@ -5,6 +5,8 @@ open System.IO
 open NUnit.Framework
 open FsUnit
 
+open Lambdy.Lib.IR
+open Lambdy.Lib.AST
 open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
@@ -34,51 +36,51 @@ module LambdaInterpreterTests =
     let successfulCasesResults : (LineNumber * string option) list list =
         [
             [ // Test 1
-                Line 3, Some "\\z.z"
+                Line 3, Some "λz.z"
                 Line 8, Some "trololo"
             ]
             [ // Test 2
                 Line 4, Some "ololo"
                 Line 7, Some "a"
-                Line 9, Some "\\V1.\\V2.V2 \\x.V2 x"
-                Line 10, Some "\\V1.\\V2.V2 \\x.V2 x"
-                Line 11, Some "\\V1.\\V2.V2 (\\x.V2) x"
-                Line 12, Some "\\V1.\\V2.V2 (\\x.V2) x"
-                Line 13, Some "\\x.\\y.\\x.x"
+                Line 9, Some "λV1.λV2.V2 λx.V2 x"
+                Line 10, Some "λV1.λV2.V2 λx.V2 x"
+                Line 11, Some "λV1.λV2.V2 (λx.V2) x"
+                Line 12, Some "λV1.λV2.V2 (λx.V2) x"
+                Line 13, Some "λx.λy.λx.x"
             ]
             [ // Test 3
                 Line 1, Some "qwerty"
                 Line 2, Some "ololo (A_ B_)"
-                Line 3, Some "\\x.\\y.z \\x.y x"
-                Line 4, Some "Mult (Sum \\P.P)"
-                Line 12, Some "second third \\x.x first"
+                Line 3, Some "λx.λy.z λx.y x"
+                Line 4, Some "Mult (Sum λP.P)"
+                Line 12, Some "second third λx.x first"
                 Line 15, Some "second third"
             ]
             [ // Test 4
                 Line 1, Some "x y"
                 Line 4, Some "x"
-                Line 6, Some "\\y'.y y'"
+                Line 6, Some "λy'.y y'"
                 Line 12, Some "a b c Y"
-                Line 13, Some "\\Y'.Y \\a'.a b c Y'"
-                Line 14, Some "Y \\a'.a b c (a b c)"
-                Line 15, Some "Y \\a'.a b c Y"
+                Line 13, Some "λY'.Y λa'.a b c Y'"
+                Line 14, Some "Y λa'.a b c (a b c)"
+                Line 15, Some "Y λa'.a b c Y"
             ]
             [ // Test 5
-                Line 4, Some "\\y.ololo"
+                Line 4, Some "λy.ololo"
                 Line 7, Some "snd"
                 Line 8, Some "res"
-                Line 11, Some "\\U.\\V.V \\x.U"
-                Line 12, Some "\\left.\\right.left (\\x.x) right"
-                Line 13, Some "\\x.\\y.\\z.z (z y x)"
+                Line 11, Some "λU.λV.V λx.U"
+                Line 12, Some "λleft.λright.left (λx.x) right"
+                Line 13, Some "λx.λy.λz.z (z y x)"
             ]
             [ // Test 6
                 Line 2, Some "a"
-                Line 4, Some "\\a.\\b.b a"
+                Line 4, Some "λa.λb.b a"
                 Line 7, Some "baz bar"
             ]
             [ // Test 7
                 Line 3, Some "var"
-                Line 5, Some "\\x.x"
+                Line 5, Some "λx.x"
                 Line 7, Some "exitCode"
                 Line 8, Some "helpMe"
                 Line 9, Some "toClear"
@@ -89,36 +91,34 @@ module LambdaInterpreterTests =
             [ // Test 9
                 Line 8, Some "U"
                 Line 9, Some "V"
-                Line 10, Some "\\f.f V U"
+                Line 10, Some "λf.f V U"
                 Line 11, Some "V"
                 Line 12, Some "U"
             ]
             [ // Test 10
-                Line 13, Some "\\f.\\x.f (f x)"
-                Line 14, Some "\\f.\\x.f (f (f x))"
-                Line 15, Some "\\f.\\x.f (f (f x))"
-                Line 16, Some "\\f.\\x.x"
-                Line 18, Some "\\f.\\x.f (f (f (f (f x))))"
-                Line 19, Some "\\f.\\x.f (f (f (f (f (f x)))))"
-                Line 20, Some "\\f.\\x.x"
-                Line 21, Some "\\f.\\x.f (f (f (f (f (f (f (f x)))))))"
+                Line 13, Some <| irToString false false (churchNumeral 2)
+                Line 14, Some <| irToString false false (churchNumeral 3)
+                Line 15, Some <| irToString false false (churchNumeral 3)
+                Line 16, Some <| irToString false false (churchNumeral 0)
+                Line 18, Some <| irToString false false (churchNumeral 5)
+                Line 19, Some <| irToString false false (churchNumeral 6)
+                Line 20, Some <| irToString false false (churchNumeral 0)
+                Line 21, Some <| irToString false false (churchNumeral 8)
             ]
             [ // Test 11
-                Line 19, Some "\\f.\\x.f x"
-                Line 20, Some "\\f.\\x.f x"
-                Line 21, Some "\\f.\\x.f (f x)"
-                Line 22, Some "\\f.\\x.f (f (f (f (f (f x)))))"
-                Line 23,
-                Some
-                    "\\f.\\x.f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f x)))))))))))))))))))))))"
+                Line 19, Some <| irToString false false (churchNumeral 1)
+                Line 20, Some <| irToString false false (churchNumeral 1)
+                Line 21, Some <| irToString false false (churchNumeral 2)
+                Line 22, Some <| irToString false false (churchNumeral 6)
+                Line 23, Some <| irToString false false (churchNumeral 24)
             ]
             [ // Test 12
-                Line 20, Some "\\f.\\x.f x"
-                Line 21, Some "\\f.\\x.f x"
-                Line 22, Some "\\f.\\x.f (f x)"
-                Line 23, Some "\\f.\\x.f (f (f x))"
-                Line 24, Some "\\f.\\x.f (f (f (f (f x))))"
-                Line 25, Some "\\f.\\x.f (f (f (f (f (f (f (f x)))))))"
+                Line 20, Some <| irToString false false (churchNumeral 1)
+                Line 21, Some <| irToString false false (churchNumeral 1)
+                Line 22, Some <| irToString false false (churchNumeral 2)
+                Line 23, Some <| irToString false false (churchNumeral 3)
+                Line 24, Some <| irToString false false (churchNumeral 5)
+                Line 25, Some <| irToString false false (churchNumeral 8)
             ]
         ]
 
@@ -166,8 +166,8 @@ module LambdaInterpreterTests =
                 Line 15, None
             ]
             [ // Test 4
-                Line 3, Some "\\x.\\y.x"
-                Line 4, Some "\\x.\\y.x"
+                Line 3, Some "λx.λy.x"
+                Line 4, Some "λx.λy.x"
                 Line 8, None
                 Line 10, Some "bar"
                 Line 15, Some "foo bar"
@@ -176,7 +176,7 @@ module LambdaInterpreterTests =
                 Line 2, None
                 Line 6, None
                 Line 7, None
-                Line 9, Some "\\x.x x"
+                Line 9, Some "λx.x x"
             ]
         ]
 

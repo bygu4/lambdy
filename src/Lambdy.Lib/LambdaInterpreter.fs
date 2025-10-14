@@ -42,10 +42,6 @@ module LambdaInterpreter =
         let mutable syntaxError = false
         let mutable reductionFailed = false
 
-        let logIfInteractive record =
-            if interactive then
-                ILogger.TryLog (logger, record)
-
         // ============= Creating an interpreter ==============================
 
         /// Create an interactive interpreter for the standard console input.
@@ -113,17 +109,19 @@ module LambdaInterpreter =
         /// Analyze the next line in the stream and get the interpretation result.
         member private _.RunOnNextLineAsync () =
 
+            let logIfInteractive record =
+                if interactive then
+                    ILogger.TryLog (logger, record)
+
             /// Execute the given special interpreter `command`.
-            let inline runCommand command =
+            let inline interpretCommand command =
                 match command with
                 | Reset ->
                     reducer.Reset ()
                     ILogger.TryLog (logger, Detailed WasReset)
-                | Scope -> logIfInteractive (Minimal <| CurrentScope reducer.Scope)
-                | Help -> logIfInteractive (Minimal SyntaxHelp)
-                | Clear ->
-                    if interactive then
-                        ILogger.TryClearBuffer logger
+                | Scope -> ILogger.TryLog (logger, Minimal <| CurrentScope reducer.Scope)
+                | Help -> ILogger.TryLog (logger, Minimal SyntaxHelp)
+                | Clear -> ILogger.TryClearBuffer logger
                 | Exit -> reader.Close ()
 
                 None
@@ -143,14 +141,14 @@ module LambdaInterpreter =
                     | _ as failure ->
                         reductionFailed <- true
                         Output (Line currentLine, failure) |> Some
-                | Command command -> runCommand command
+                | Command command -> interpretCommand command
                 | Empty -> None
 
             async {
                 currentLine <- currentLine + 1
                 logIfInteractive (Minimal WaitingForInput)
                 let! line = reader.ReadLineAsync () |> Async.AwaitTask
-                let parserResult = line |> run expression
+                let parserResult = line |> run (expression interactive)
 
                 return
                     match parserResult with
