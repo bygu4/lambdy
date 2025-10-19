@@ -8,9 +8,9 @@ module LambdaTerm =
 
     /// The finalized lambda term representation.
     type LambdaTerm =
-        | Variable of VariableName
-        | Abstraction of VariableName * LambdaTerm
-        | Application of LambdaTerm * LambdaTerm
+        | Variable of name : VariableName
+        | Abstraction of variable : VariableName * body : LambdaTerm
+        | Application of left : LambdaTerm * right : LambdaTerm
 
     // ============= Constructors =========================================
 
@@ -34,6 +34,7 @@ module LambdaTerm =
     let rec private toLambdaTerm' ir cont =
         match ir with
         | IR.Variable (var, _) -> lamVar var |> cont
+        | IR.Numeral num -> toLambdaTerm' (churchNumeral num) cont
         | IR.Abstraction (var, _, body) -> toLambdaTerm' body (fun bodyTerm -> lamAbs var bodyTerm |> cont)
         | IR.Application (left, right) ->
             toLambdaTerm'

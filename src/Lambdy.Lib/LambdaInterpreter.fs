@@ -155,7 +155,7 @@ module LambdaInterpreter =
                     | ParserResult.Success (expr, _, _) -> interpretExpression expr
                     | ParserResult.Failure (msg, _, _) ->
                         syntaxError <- true
-                        Output (Line currentLine, Failure <| ErrorMessage msg) |> Some
+                        Output (Line currentLine, Failure msg) |> Some
             }
 
         /// Free resources used by the interpreter.

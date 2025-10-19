@@ -54,13 +54,13 @@ module Parsers =
         /// Accept a parenthesized lambda term.
         let termPar = between ((?>) (pchar '(')) (pchar ')') ((?>) term)
 
-        choice [ variable |>> Variable ; termPar |>> Brackets ]
+        choice [ variable |>> Variable ; puint16 |>> Numeral ; termPar |>> Brackets ]
 
     /// Accept a lambda abstraction.
     let abstraction =
 
         /// Accept a single lambda symbol.
-        let lambdaSymbol = choice [ pchar MainLambdaChar ; pchar SecondaryLambdaChar ]
+        let lambdaSymbol = Array.map pchar lambdaChars |> choice
 
         /// Accept a character separating variables and body of the abstraction.
         let separator = pchar SeparatorChar

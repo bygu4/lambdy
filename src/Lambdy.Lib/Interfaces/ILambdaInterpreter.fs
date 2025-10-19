@@ -8,7 +8,7 @@ module ILambdaInterpreter =
     type LineNumber = | Line of int
 
     /// The output of the interpreter.
-    type InterpreterOutput = | Output of LineNumber * ReductionResult
+    type InterpreterOutput = | Output of line : LineNumber * result : ReductionResult
 
     /// An interface representing the lambda calculus interpreter.
     [<Interface>]

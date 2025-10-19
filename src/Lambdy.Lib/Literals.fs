@@ -32,12 +32,6 @@ module Literals =
     let ExitKeyword = "exit"
 
     [<Literal>]
-    let MainLambdaChar = 'λ'
-
-    [<Literal>]
-    let SecondaryLambdaChar = '\\'
-
-    [<Literal>]
     let SeparatorChar = '.'
 
     [<Literal>]
@@ -46,8 +40,10 @@ module Literals =
     [<Literal>]
     let CommentChar = '#'
 
+    let lambdaChars = [| 'λ' ; '\\' |]
+
     /// The list of defined keywords.
-    let reservedNames = [ DeclarationKeyword ]
+    let reservedNames = [| DeclarationKeyword |]
 
     /// Whether the given `str` is reserved as a keyword.
-    let isReserved str = List.contains str reservedNames
+    let isReserved str = Array.contains str reservedNames

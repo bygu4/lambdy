@@ -29,10 +29,10 @@ module Reducer =
                 irVarBound var value
             | None -> term
 
-        let delayConversion term x (DelayedAlpha alpha) body =
+        let delayConversion term x alpha body =
             match alpha with
             | Some y ->
-                ILogger.TryLog (logger, Diagnostic <| DelayedAlphaConv (term, x, y))
+                ILogger.TryLog (logger, Diagnostic <| DelayedAlpha (term, x, y))
                 irAbsAlpha x y body
             | None -> irAbs x body
 
@@ -45,6 +45,8 @@ module Reducer =
             | _ when Map.isEmpty bindings -> cont term
 
             | Variable (x, _) -> bindValue term x bindings |> cont
+
+            | Numeral _ -> cont term
 
             | Abstraction (x, _, body) ->
                 let bindings = Map.remove x bindings
@@ -63,9 +65,9 @@ module Reducer =
 
                 let alpha =
                     if Set.contains x freeVarsSub then
-                        irDelayedAlpha <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
+                        Some <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
                     else
-                        DelayedAlpha None
+                        None
 
                 bindMany' bindings body (fun boundBody -> delayConversion term x alpha boundBody |> cont)
 
@@ -94,8 +96,8 @@ module Reducer =
 
                 let capturedAlpha =
                     match alpha with
-                    | DelayedAlpha (Some y) -> Set.contains y freeVarsSub
-                    | DelayedAlpha None -> false
+                    | Some y -> Set.contains y freeVarsSub
+                    | None -> false
 
                 if willSubstitute then
                     let freeVarsBody = freeVars true body
@@ -110,7 +112,7 @@ module Reducer =
                             body
                             (fun convBody -> substitute' var sub convBody (fun subsBody -> irAbs y subsBody |> cont))
                     else
-                        let alpha = if capturedAlpha then irDelayedAlpha y else alpha
+                        let alpha = if capturedAlpha then Some y else alpha
                         substitute' var sub body (fun subsBody -> delayConversion term x alpha subsBody |> cont)
 
                 else
@@ -133,23 +135,29 @@ module Reducer =
             ILogger.TryLog (logger, Normal <| CurrentTerm (root term))
             term
 
-        let unbind var boundValue root =
-            ILogger.TryLog (logger, Normal <| Unbinding (var, boundValue))
+        let expandVar var boundValue root =
             let res = boundValue
+            ILogger.TryLog (logger, Normal <| Expansion (var, res))
             currentTerm res root
 
-        let alphaConversion term x y body root =
-            ILogger.TryLog (logger, Normal <| AlphaConversion (term, x, y))
+        let expandNum num root =
+            let name = num.ToString () |> Name
+            let res = churchNumeral num
+            ILogger.TryLog (logger, Normal <| Expansion (name, res))
+            currentTerm res root
+
+        let alphaConversion src x y body root =
+            ILogger.TryLog (logger, Normal <| AlphaConversion (src, x, y))
             let res = irAbs y (substitute x (irVar y) body)
             currentTerm res root
 
-        let etaConversion term left root =
-            ILogger.TryLog (logger, Normal <| EtaConversion (term, left))
+        let etaReduction src left root =
+            ILogger.TryLog (logger, Normal <| EtaReduction (src, left))
             let res = left
             currentTerm res root
 
-        let betaReduction term body var sub root =
-            ILogger.TryLog (logger, Normal <| BetaReduction (term, body, var, sub))
+        let betaReduction src body var sub root =
+            ILogger.TryLog (logger, Normal <| BetaReduction (src, body, var, sub))
             let res = substitute var sub body
             currentTerm res root
 
@@ -165,15 +173,18 @@ module Reducer =
 
             let inline tryBetaReduction term body var sub root cont =
                 match reductionLimit with
-                | Some limit when reductionCount >= limit -> cont <| Error $"Exceeded the reduction limit: {limit}."
+                | Some limit when reductionCount >= limit -> Error $"Exceeded the reduction limit: {limit}." |> cont
                 | _ ->
                     reductionCount <- reductionCount + 1
                     betaReduction term body var sub root |> Ok |> cont
 
             let inline reduceVar curStrategy term var boundValue root cont =
                 match boundValue with
-                | BoundValue (Some boundValue) -> reduce' curStrategy (unbind var boundValue root) root cont
-                | _ -> cont <| Ok term
+                | Some boundValue -> reduce' curStrategy (expandVar var boundValue root) root cont
+                | _ -> Ok term |> cont
+
+            let inline reduceNum num root cont =
+                reduce' curStrategy (expandNum num root) root cont
 
             let inline reduceAbs (Strategy (_, Strong strong) as curStrategy) term var alpha body root cont =
                 match alpha, body with
@@ -183,9 +194,9 @@ module Reducer =
                     && right = irVar var
                     && not <| Set.contains var (freeVars false left)
                     ->
-                    reduce' curStrategy (etaConversion term left root) root cont
+                    reduce' curStrategy (etaReduction term left root) root cont
 
-                | DelayedAlpha (Some alpha), body when strong ->
+                | Some alpha, body when strong ->
                     reduce' curStrategy (alphaConversion term var alpha body root) root cont
 
                 | _, body when strong ->
@@ -195,7 +206,7 @@ module Reducer =
                         (fun body -> irAbs var body |> root)
                         (maybe cont (fun reducedBody -> irAbs var reducedBody |> Ok |> cont))
 
-                | _ -> cont <| Ok term
+                | _ -> Ok term |> cont
 
             let rec reduceApp (Strategy (Strict strict, _) as curStrategy) finish term left right root cont =
                 match left with
@@ -259,6 +270,7 @@ module Reducer =
 
             match term with
             | Variable (var, boundValue) -> reduceVar curStrategy term var boundValue root cont
+            | Numeral num -> reduceNum num root cont
             | Abstraction (var, alpha, body) -> reduceAbs curStrategy term var alpha body root cont
             | Application (left, right) -> reduceApp curStrategy false term left right root cont
 
@@ -269,17 +281,18 @@ module Reducer =
         [<TailCall>]
         let rec closure' term root cont =
             match term with
-            | Variable (var, BoundValue None) -> lamVar var |> cont
-            | Variable (var, BoundValue (Some boundValue)) -> closure' (unbind var boundValue root) root cont
+            | Variable (var, None) -> lamVar var |> cont
+            | Variable (var, Some boundValue) -> closure' (expandVar var boundValue root) root cont
+            | Numeral num -> closure' (expandNum num root) root cont
             | Abstraction (var, _, Application (left, right)) when
                 etaConversions
                 && right = irVar var
                 && not <| Set.contains var (freeVars false left)
                 ->
-                closure' (etaConversion term left root) root cont
-            | Abstraction (var, DelayedAlpha None, body) ->
+                closure' (etaReduction term left root) root cont
+            | Abstraction (var, None, body) ->
                 closure' body (fun body -> irAbs var body |> root) (fun bodyClosure -> lamAbs var bodyClosure |> cont)
-            | Abstraction (x, DelayedAlpha (Some y), body) -> closure' (alphaConversion term x y body root) root cont
+            | Abstraction (x, Some y, body) -> closure' (alphaConversion term x y body root) root cont
             | Application (left, right) ->
                 closure'
                     left
@@ -306,13 +319,12 @@ module Reducer =
         member this.Reduce term =
             reductionCount <- 0
 
-            let result = term |> bindMany (this.Scope |> Map.ofList) |> reduce
-
-            match result, strategy with
-            | Ok reducedTerm, Strategy (_, Strong true) ->
-                Success (NormalForm <| toLambdaTerm reducedTerm, ReductionCount reductionCount)
-            | Ok reducedTerm, _ -> Success (NormalForm <| closure reducedTerm, ReductionCount reductionCount)
-            | Error msg, _ -> Failure <| ErrorMessage msg
+            term
+            |> bindMany (this.Scope |> Map.ofList)
+            |> reduce
+            |> function
+                | Ok reducedTerm -> Success (closure reducedTerm, reductionCount)
+                | Error msg -> Failure msg
 
         interface IReducer with
             member this.Scope = this.Scope

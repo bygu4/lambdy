@@ -10,33 +10,33 @@ module ILogger =
 
     type Minimal =
         | WaitingForInput
-        | CurrentScope of (VariableName * IR) list
+        | CurrentScope of bindings : (VariableName * IR) list
         | SyntaxHelp
-        | InterpreterOutput of InterpreterOutput
+        | InterpreterOutput of output : InterpreterOutput
 
     type Normal =
-        | StartedReducing of IR
-        | CurrentTerm of IR
-        | Unbinding of VariableName * IR
-        | AlphaConversion of IR * VariableName * VariableName
-        | EtaConversion of IR * IR
-        | BetaReduction of IR * IR * VariableName * IR
+        | StartedReducing of term : IR
+        | CurrentTerm of term : IR
+        | Expansion of var : VariableName * value : IR
+        | AlphaConversion of src : IR * var : VariableName * sub : VariableName
+        | EtaReduction of src : IR * res : IR
+        | BetaReduction of src : IR * body : IR * var : VariableName * sub : IR
 
     type Detailed =
-        | CurrentlyReducing of IR
-        | NewBinding of VariableName * IR
+        | CurrentlyReducing of term : IR
+        | NewBinding of var : VariableName * value : IR
         | WasReset
 
     type Diagnostic =
-        | Substitution of VariableName * IR
-        | ValueBinding of VariableName * IR
-        | DelayedAlphaConv of IR * VariableName * VariableName
+        | Substitution of var : VariableName * sub : IR
+        | ValueBinding of var : VariableName * value : IR
+        | DelayedAlpha of term : IR * var : VariableName * sub : VariableName
 
     type LogRecord =
-        | Minimal of Minimal
-        | Normal of Normal
-        | Detailed of Detailed
-        | Diagnostic of Diagnostic
+        | Minimal of record : Minimal
+        | Normal of record : Normal
+        | Detailed of record : Detailed
+        | Diagnostic of record : Diagnostic
 
     /// An interface representing a class for managing logs.
     [<Interface>]

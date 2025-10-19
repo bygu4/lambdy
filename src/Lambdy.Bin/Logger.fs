@@ -51,8 +51,8 @@ module Logger =
             let lineStr = if lineNumber then $"[Line {line}]: " else String.Empty
 
             match result with
-            | Success (NormalForm term, _) -> Logger.PrintSuccess (lineStr + lamToString strictTerms false term)
-            | Failure (ErrorMessage message) -> Logger.PrintError (lineStr + message)
+            | Success (term, _) -> Logger.PrintSuccess (lineStr + lamToString strictTerms false term)
+            | Failure message -> Logger.PrintError (lineStr + message)
 
         // ------------- Normal ---------------------------------------
 
@@ -63,11 +63,11 @@ module Logger =
         let handleUnbinding (Name var) term =
             printNormalLog "subst" $"{var} -> {irToString strictTerms false term}"
 
-        let handleAlphaConversion term (Name var) (Name sub) =
-            printNormalLog "alpha" $"{irToString strictTerms true term}: {var} -> {sub}"
+        let handleAlphaConversion src (Name var) (Name sub) =
+            printNormalLog "alpha" $"{irToString strictTerms true src}: {var} -> {sub}"
 
-        let handleEtaConversion term res =
-            printNormalLog "eta" $"{irToString strictTerms false term} -> {irToString strictTerms false res}"
+        let handleEtaConversion src res =
+            printNormalLog "eta" $"{irToString strictTerms false src} -> {irToString strictTerms false res}"
 
         let handleBetaReduction src body (Name var) sub =
             let srcStr = irToString strictTerms false src
@@ -107,16 +107,16 @@ module Logger =
             | Minimal (InterpreterOutput output) -> handleInterpreterOutput output
             | Normal (StartedReducing term) -> handleStartedReducing term
             | Normal (CurrentTerm term) -> handleCurrentTerm term
-            | Normal (Unbinding (var, term)) -> handleUnbinding var term
+            | Normal (Expansion (var, term)) -> handleUnbinding var term
             | Normal (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
-            | Normal (EtaConversion (term, res)) -> handleEtaConversion term res
+            | Normal (EtaReduction (term, res)) -> handleEtaConversion term res
             | Normal (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
             | Detailed (CurrentlyReducing term) -> handleCurrentlyReducing term
             | Detailed (NewBinding (var, value)) -> handleNewBinding var value
             | Detailed WasReset -> handleWasReset ()
             | Diagnostic (Substitution (var, sub)) -> handleSubstitution var sub
             | Diagnostic (ValueBinding (var, value)) -> handleValueBinding var value
-            | Diagnostic (DelayedAlphaConv (term, var, sub)) -> handleDelayedConversion term var sub
+            | Diagnostic (DelayedAlpha (term, var, sub)) -> handleDelayedConversion term var sub
 
         // ============= Members ==============================================
 

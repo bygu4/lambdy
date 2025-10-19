@@ -10,7 +10,7 @@ module ParseTree =
     type VariableNames = | Names of VariableName list
 
     /// A special command for managing the interpreter execution.
-    type SpecialCommand =
+    type Command =
         | Reset
         | Scope
         | Help
@@ -19,23 +19,24 @@ module ParseTree =
 
     /// A primary term representation.
     type Term =
-        | Application of Operand * OptionalApplication
-        | Abstraction of VariableNames * Term
+        | Application of operand : Operand * rest : OptionalApplication
+        | Abstraction of variables : VariableNames * body : Term
 
     /// Optional lambda term application.
     and OptionalApplication =
-        | WithContinuation of Operand * OptionalApplication
-        | ClosingAbstraction of Term
+        | WithContinuation of operand : Operand * rest : OptionalApplication
+        | ClosingAbstraction of abstraction : Term
         | Epsilon
 
     /// An operand in lambda term application.
     and Operand =
-        | Variable of VariableName
-        | Brackets of Term
+        | Variable of name : VariableName
+        | Numeral of number : uint16
+        | Brackets of term : Term
 
     /// An expression to be interpreted.
     type Expression =
-        | Binding of VariableName * Term
-        | Result of Term
-        | Command of SpecialCommand
+        | Binding of variable : VariableName * value : Term
+        | Result of value : Term
+        | Command of command : Command
         | Empty

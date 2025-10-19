@@ -6,7 +6,6 @@ open NUnit.Framework
 open FsUnit
 
 open Lambdy.Lib.IR
-open Lambdy.Lib.AST
 open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
@@ -96,29 +95,29 @@ module LambdaInterpreterTests =
                 Line 12, Some "U"
             ]
             [ // Test 10
-                Line 13, Some <| irToString false false (churchNumeral 2)
-                Line 14, Some <| irToString false false (churchNumeral 3)
-                Line 15, Some <| irToString false false (churchNumeral 3)
-                Line 16, Some <| irToString false false (churchNumeral 0)
-                Line 18, Some <| irToString false false (churchNumeral 5)
-                Line 19, Some <| irToString false false (churchNumeral 6)
-                Line 20, Some <| irToString false false (churchNumeral 0)
-                Line 21, Some <| irToString false false (churchNumeral 8)
+                Line 13, Some <| irToString false false (churchNumeral 2us)
+                Line 14, Some <| irToString false false (churchNumeral 3us)
+                Line 15, Some <| irToString false false (churchNumeral 3us)
+                Line 16, Some <| irToString false false (churchNumeral 0us)
+                Line 18, Some <| irToString false false (churchNumeral 5us)
+                Line 19, Some <| irToString false false (churchNumeral 6us)
+                Line 20, Some <| irToString false false (churchNumeral 0us)
+                Line 21, Some <| irToString false false (churchNumeral 8us)
             ]
             [ // Test 11
-                Line 19, Some <| irToString false false (churchNumeral 1)
-                Line 20, Some <| irToString false false (churchNumeral 1)
-                Line 21, Some <| irToString false false (churchNumeral 2)
-                Line 22, Some <| irToString false false (churchNumeral 6)
-                Line 23, Some <| irToString false false (churchNumeral 24)
+                Line 19, Some <| irToString false false (churchNumeral 1us)
+                Line 20, Some <| irToString false false (churchNumeral 1us)
+                Line 21, Some <| irToString false false (churchNumeral 2us)
+                Line 22, Some <| irToString false false (churchNumeral 6us)
+                Line 23, Some <| irToString false false (churchNumeral 24us)
             ]
             [ // Test 12
-                Line 20, Some <| irToString false false (churchNumeral 1)
-                Line 21, Some <| irToString false false (churchNumeral 1)
-                Line 22, Some <| irToString false false (churchNumeral 2)
-                Line 23, Some <| irToString false false (churchNumeral 3)
-                Line 24, Some <| irToString false false (churchNumeral 5)
-                Line 25, Some <| irToString false false (churchNumeral 8)
+                Line 20, Some <| irToString false false (churchNumeral 1us)
+                Line 21, Some <| irToString false false (churchNumeral 1us)
+                Line 22, Some <| irToString false false (churchNumeral 2us)
+                Line 23, Some <| irToString false false (churchNumeral 3us)
+                Line 24, Some <| irToString false false (churchNumeral 5us)
+                Line 25, Some <| irToString false false (churchNumeral 8us)
             ]
         ]
 
@@ -201,7 +200,7 @@ module LambdaInterpreterTests =
         && Seq.zip actual expected
            |> Seq.map (
                function
-               | Output (Line actualLine, Success (NormalForm actualRes, _)), (Line expectedLine, Some expectedRes) ->
+               | Output (Line actualLine, Success (actualRes, _)), (Line expectedLine, Some expectedRes) ->
                    actualLine = expectedLine && lamToString false false actualRes = expectedRes
                | Output (Line actualLine, Failure _), (Line expectedLine, None) -> actualLine = expectedLine
                | _ -> false

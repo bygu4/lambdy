@@ -10,20 +10,10 @@ module AST =
 
     /// The finalized expression representation.
     type Expression =
-        | Binding of VariableName * IR
-        | Result of IR
-        | Command of SpecialCommand
+        | Binding of variable : VariableName * value : IR
+        | Result of value : IR
+        | Command of command : Command
         | Empty
-
-    [<TailCall>]
-    let rec private churchNumeral' n cont =
-        match n with
-        | 0 -> cont <| irVar (Name "x")
-        | n when n > 0 -> churchNumeral' (n - 1) (fun numeral -> irApp (irVar (Name "f")) numeral |> cont)
-        | _ -> raise <| ArgumentException "Expected a non-negative value."
-
-    let churchNumeral n =
-        churchNumeral' n (fun app -> irAbs (Name "f") (irAbs (Name "x") app))
 
     /// Build AST of a lambda term using the `primary` representation.
     /// Use CPS with the given `cont`.
@@ -34,6 +24,7 @@ module AST =
         let inline buildOperandAST primary cont =
             match primary with
             | ParseTree.Variable var -> irVar var |> cont
+            | ParseTree.Numeral num -> irNum num |> cont
             | Brackets term -> buildTermAST' term cont
 
         /// Build AST of lambda term application using term on the `left` and the rest on `right`.

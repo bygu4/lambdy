@@ -13,7 +13,7 @@ open Lambdy.Lib.Reducer
 module ReducerTests =
 
     type ExpectedResult =
-        | ShouldSucceed of NormalForm * ReductionCount
+        | ShouldSucceed of normalForm : LambdaTerm * reductionCount : int
         | ShouldFail
 
     [<Literal>]
@@ -209,56 +209,40 @@ module ReducerTests =
     let expectedResults_Generic =
         [
             // No redexes
-            ShouldSucceed (NormalForm <| lamVarTerm "x", ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "x") (lamVarTerm "y"), ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamAbs (Name "x") (lamVarTerm "y"), ReductionCount 0)
-            ShouldSucceed (NormalForm lamOmega, ReductionCount 0)
-            ShouldSucceed (
-                NormalForm <| lamApp (lamVarTerm "test") (lamAbs (Name "x") (lamVarTerm "y")),
-                ReductionCount 0
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamApp (lamApp (lamVarTerm "A1") (lamVarTerm "A2")) (lamVarTerm "A3"),
-                ReductionCount 0
-            )
+            ShouldSucceed (lamVarTerm "x", 0)
+            ShouldSucceed (lamApp (lamVarTerm "x") (lamVarTerm "y"), 0)
+            ShouldSucceed (lamAbs (Name "x") (lamVarTerm "y"), 0)
+            ShouldSucceed (lamOmega, 0)
+            ShouldSucceed (lamApp (lamVarTerm "test") (lamAbs (Name "x") (lamVarTerm "y")), 0)
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "A1") (lamVarTerm "A2")) (lamVarTerm "A3"), 0)
 
             // Simple reduction
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "y") (lamVarTerm "y"), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamVarTerm "z", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "z") (lamVarTerm "y"), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamVarTerm "y", ReductionCount 1)
-            ShouldSucceed (
-                NormalForm <| lamApp (lamApp (lamVarTerm "s") (lamVarTerm "s")) (lamVarTerm "s"),
-                ReductionCount 1
-            )
+            ShouldSucceed (lamApp (lamVarTerm "y") (lamVarTerm "y"), 1)
+            ShouldSucceed (lamVarTerm "z", 1)
+            ShouldSucceed (lamApp (lamVarTerm "z") (lamVarTerm "y"), 1)
+            ShouldSucceed (lamVarTerm "y", 1)
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "s") (lamVarTerm "s")) (lamVarTerm "s"), 1)
 
             // Nested redex
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "x") lamOmega, ReductionCount 1)
-            ShouldSucceed (
-                NormalForm <| lamApp (lamVarTerm "S") (lamApp (lamVarTerm "a") (lamVarTerm "S")),
-                ReductionCount 2
-            )
-            ShouldSucceed (NormalForm <| lamVarTerm "y", ReductionCount 4)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "y") (lamVarTerm "y"), ReductionCount 2)
-            ShouldSucceed (
-                NormalForm <| lamApp (lamVarTerm "i") (lamApp (lamVarTerm "j") (lamVarTerm "k")),
-                ReductionCount 1
-            )
+            ShouldSucceed (lamApp (lamVarTerm "x") lamOmega, 1)
+            ShouldSucceed (lamApp (lamVarTerm "S") (lamApp (lamVarTerm "a") (lamVarTerm "S")), 2)
+            ShouldSucceed (lamVarTerm "y", 4)
+            ShouldSucceed (lamApp (lamVarTerm "y") (lamVarTerm "y"), 2)
+            ShouldSucceed (lamApp (lamVarTerm "i") (lamApp (lamVarTerm "j") (lamVarTerm "k")), 1)
 
             // Multiple variable substitution
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "y") (lamVarTerm "x"), ReductionCount 2)
-            ShouldSucceed (NormalForm <| lamVarTerm "x", ReductionCount 3)
-            ShouldSucceed (NormalForm <| lamAbs (Name "H") (lamAbs (Name "K") (lamVarTerm "c")), ReductionCount 3)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "trololo") (lamVarTerm "A"), ReductionCount 2)
+            ShouldSucceed (lamApp (lamVarTerm "y") (lamVarTerm "x"), 2)
+            ShouldSucceed (lamVarTerm "x", 3)
+            ShouldSucceed (lamAbs (Name "H") (lamAbs (Name "K") (lamVarTerm "c")), 3)
+            ShouldSucceed (lamApp (lamVarTerm "trololo") (lamVarTerm "A"), 2)
 
             // Term substitution
-            ShouldSucceed (NormalForm <| lamI "IDENT", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamVarTerm "K", ReductionCount 2)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "x") (lamVarTerm "y"), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "k") (lamVarTerm "k"), ReductionCount 3)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "z") (lamVarTerm "z"), ReductionCount 3)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "k") lamOmega, ReductionCount 3)
+            ShouldSucceed (lamI "IDENT", 1)
+            ShouldSucceed (lamVarTerm "K", 2)
+            ShouldSucceed (lamApp (lamVarTerm "x") (lamVarTerm "y"), 1)
+            ShouldSucceed (lamApp (lamVarTerm "k") (lamVarTerm "k"), 3)
+            ShouldSucceed (lamApp (lamVarTerm "z") (lamVarTerm "z"), 3)
+            ShouldSucceed (lamApp (lamVarTerm "k") lamOmega, 3)
 
             // Irreducible term
             ShouldFail
@@ -268,71 +252,43 @@ module ReducerTests =
             ShouldFail
 
             // Alpha conversion required
+            ShouldSucceed (lamAbs (Name "y'") (lamApp (lamVarTerm "x") (lamVarTerm "y")), 1)
+            ShouldSucceed (lamAbs (Name "y'") (lamApp (lamVarTerm "y'") (lamVarTerm "y")), 1)
+            ShouldSucceed (lamAbs (Name "z''") (lamApp (lamVarTerm "z''") (lamVarTerm "z")), 1)
+            ShouldSucceed (lamVarTerm "x", 2)
             ShouldSucceed (
-                NormalForm <| lamAbs (Name "y'") (lamApp (lamVarTerm "x") (lamVarTerm "y")),
-                ReductionCount 1
-            )
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "y'") (lamApp (lamVarTerm "y'") (lamVarTerm "y")),
-                ReductionCount 1
-            )
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "z''") (lamApp (lamVarTerm "z''") (lamVarTerm "z")),
-                ReductionCount 1
-            )
-            ShouldSucceed (NormalForm <| lamVarTerm "x", ReductionCount 2)
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs
+                lamAbs
                     (Name "b'")
                     (lamAbs (Name "c'") (lamApp (lamApp (lamVarTerm "c") (lamVarTerm "b")) (lamVarTerm "b'"))),
-                ReductionCount 1
+                1
             )
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "a'''") (lamVarTerm "a''")) (lamVarTerm "a'"), 3)
             ShouldSucceed (
-                NormalForm
-                <| lamApp (lamApp (lamVarTerm "a'''") (lamVarTerm "a''")) (lamVarTerm "a'"),
-                ReductionCount 3
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs
+                lamAbs
                     (Name "x'")
                     (lamAbs
                         (Name "y'")
                         (lamApp (lamApp (lamVarTerm "x") (lamVarTerm "y")) (lamApp (lamVarTerm "x") (lamVarTerm "y")))),
-                ReductionCount 1
+                1
             )
 
             // Bound value
-            ShouldSucceed (NormalForm <| lamVarTerm "value", ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "x") (lamI "x"), ReductionCount 0)
-            ShouldSucceed (
-                NormalForm
-                <| lamApp (lamApp (lamVarTerm "A") (lamVarTerm "B1")) (lamVarTerm "C"),
-                ReductionCount 0
-            )
-            ShouldSucceed (NormalForm lamOmega, ReductionCount 1)
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "var") (lamApp (lamVarTerm "x") (lamVarTerm "y")),
-                ReductionCount 0
-            )
-            ShouldSucceed (NormalForm <| lamAbs (Name "U") (lamApp (lamVarTerm "V") (lamVarTerm "K")), ReductionCount 0)
-            ShouldSucceed (
-                NormalForm <| lamApp (lamApp (lamVarTerm "z") (lamVarTerm "z")) (lamVarTerm "y"),
-                ReductionCount 1
-            )
+            ShouldSucceed (lamVarTerm "value", 0)
+            ShouldSucceed (lamApp (lamVarTerm "x") (lamI "x"), 0)
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "A") (lamVarTerm "B1")) (lamVarTerm "C"), 0)
+            ShouldSucceed (lamOmega, 1)
+            ShouldSucceed (lamAbs (Name "var") (lamApp (lamVarTerm "x") (lamVarTerm "y")), 0)
+            ShouldSucceed (lamAbs (Name "U") (lamApp (lamVarTerm "V") (lamVarTerm "K")), 0)
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "z") (lamVarTerm "z")) (lamVarTerm "y"), 1)
 
             // Delayed alpha conversion
-            ShouldSucceed (NormalForm <| lamI "x'", ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamAbs (Name "y'") (lamVarTerm "y"), ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamAbs (Name "C") (lamApp (lamVarTerm "C") (lamVarTerm "B")), ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamAbs (Name "I") (lamAbs (Name "T") (lamVarTerm "K")), ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamI "y", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "t") (lamVarTerm "y"), ReductionCount 2)
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "y''") (lamApp (lamVarTerm "y'") (lamVarTerm "y")),
-                ReductionCount 1
-            )
+            ShouldSucceed (lamI "x'", 0)
+            ShouldSucceed (lamAbs (Name "y'") (lamVarTerm "y"), 0)
+            ShouldSucceed (lamAbs (Name "C") (lamApp (lamVarTerm "C") (lamVarTerm "B")), 0)
+            ShouldSucceed (lamAbs (Name "I") (lamAbs (Name "T") (lamVarTerm "K")), 0)
+            ShouldSucceed (lamI "y", 1)
+            ShouldSucceed (lamApp (lamVarTerm "t") (lamVarTerm "y"), 2)
+            ShouldSucceed (lamAbs (Name "y''") (lamApp (lamVarTerm "y'") (lamVarTerm "y")), 1)
         ]
 
     let testCases_Generic =
@@ -383,43 +339,35 @@ module ReducerTests =
             ShouldFail
 
             // Different reduction count
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "y") (lamVarTerm "y")) (lamVarTerm "y"), 2)
             ShouldSucceed (
-                NormalForm <| lamApp (lamApp (lamVarTerm "y") (lamVarTerm "y")) (lamVarTerm "y"),
-                ReductionCount 2
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamApp
+                lamApp
                     (lamApp (lamApp (lamVarTerm "x") (lamVarTerm "x")) (lamVarTerm "a"))
                     (lamApp (lamVarTerm "x") (lamVarTerm "x")),
-                ReductionCount 2
+                2
             )
-            ShouldSucceed (NormalForm <| lamI "I", ReductionCount 5)
+            ShouldSucceed (lamI "I", 5)
         ]
 
     let expectedResults_Lazy =
         [
             // Reduced only lazily
-            ShouldSucceed (NormalForm <| lamI "y", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamVarTerm "y", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamVarTerm "z", ReductionCount 2)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "K") (lamI "y"), ReductionCount 3)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "www") (lamVarTerm "www"), ReductionCount 2)
-            ShouldSucceed (NormalForm <| lamI "y", ReductionCount 2)
+            ShouldSucceed (lamI "y", 1)
+            ShouldSucceed (lamVarTerm "y", 1)
+            ShouldSucceed (lamVarTerm "z", 2)
+            ShouldSucceed (lamApp (lamVarTerm "K") (lamI "y"), 3)
+            ShouldSucceed (lamApp (lamVarTerm "www") (lamVarTerm "www"), 2)
+            ShouldSucceed (lamI "y", 2)
 
             // Different reduction count
+            ShouldSucceed (lamApp (lamApp (lamVarTerm "y") (lamVarTerm "y")) (lamVarTerm "y"), 4)
             ShouldSucceed (
-                NormalForm <| lamApp (lamApp (lamVarTerm "y") (lamVarTerm "y")) (lamVarTerm "y"),
-                ReductionCount 4
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamApp
+                lamApp
                     (lamApp (lamApp (lamVarTerm "x") (lamVarTerm "x")) (lamVarTerm "a"))
                     (lamApp (lamVarTerm "x") (lamVarTerm "x")),
-                ReductionCount 3
+                3
             )
-            ShouldSucceed (NormalForm <| lamI "I", ReductionCount 8)
+            ShouldSucceed (lamI "I", 8)
         ]
 
     let testCases_StrictAndLazy =
@@ -469,22 +417,21 @@ module ReducerTests =
     let expectedResults_Strong =
         [
             // Under abstraction
-            ShouldSucceed (NormalForm <| lamAbs (Name "a") (lamApp (lamVarTerm "x") (lamVarTerm "c")), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamAbs (Name "X") (lamApp (lamVarTerm "X") lamOmega), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamAbs (Name "s") (lamAbs (Name "t") (lamVarTerm "y")), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamAbs (Name "x") (lamApp (lamVarTerm "y") (lamVarTerm "k")), ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamAbs (Name "q") (lamI "x"), ReductionCount 1)
+            ShouldSucceed (lamAbs (Name "a") (lamApp (lamVarTerm "x") (lamVarTerm "c")), 1)
+            ShouldSucceed (lamAbs (Name "X") (lamApp (lamVarTerm "X") lamOmega), 1)
+            ShouldSucceed (lamAbs (Name "s") (lamAbs (Name "t") (lamVarTerm "y")), 1)
+            ShouldSucceed (lamAbs (Name "x") (lamApp (lamVarTerm "y") (lamVarTerm "k")), 1)
+            ShouldSucceed (lamAbs (Name "q") (lamI "x"), 1)
             ShouldFail
             ShouldFail
             ShouldFail
             ShouldFail
 
             // Partial application
-            ShouldSucceed (NormalForm <| lamAbs (Name "y") (lamVarTerm "K"), ReductionCount 2)
+            ShouldSucceed (lamAbs (Name "y") (lamVarTerm "K"), 2)
             ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "w") (lamApp (lamApp (lamVarTerm "w") lamOmega) (lamApp (lamVarTerm "w") lamOmega)),
-                ReductionCount 2
+                lamAbs (Name "w") (lamApp (lamApp (lamVarTerm "w") lamOmega) (lamApp (lamVarTerm "w") lamOmega)),
+                2
             )
             ShouldFail
         ]
@@ -493,45 +440,27 @@ module ReducerTests =
         [
             // Under abstraction
             ShouldSucceed (
-                NormalForm
-                <| lamAbs
+                lamAbs
                     (Name "a")
                     (lamApp (lamAbs (Name "b") (lamApp (lamVarTerm "b") (lamVarTerm "c"))) (lamVarTerm "x")),
-                ReductionCount 0
+                0
             )
+            ShouldSucceed (lamAbs (Name "X") (lamApp (lamApp (lamI "Y") (lamVarTerm "X")) lamOmega), 0)
             ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "X") (lamApp (lamApp (lamI "Y") (lamVarTerm "X")) lamOmega),
-                ReductionCount 0
+                lamAbs (Name "s") (lamAbs (Name "t") (lamApp (lamAbs (Name "x") (lamVarTerm "y")) (lamVarTerm "s"))),
+                0
             )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "s") (lamAbs (Name "t") (lamApp (lamAbs (Name "x") (lamVarTerm "y")) (lamVarTerm "s"))),
-                ReductionCount 0
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "x") (lamApp (lamApp (lamI "x") (lamVarTerm "y")) (lamVarTerm "k")),
-                ReductionCount 0
-            )
-            ShouldSucceed (NormalForm <| lamAbs (Name "q") (lamApp (lamI "x") (lamI "x")), ReductionCount 0)
-            ShouldSucceed (NormalForm lamY, ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "Q") lamY, ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamAbs (Name "s") lamY, ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamY, ReductionCount 1)
+            ShouldSucceed (lamAbs (Name "x") (lamApp (lamApp (lamI "x") (lamVarTerm "y")) (lamVarTerm "k")), 0)
+            ShouldSucceed (lamAbs (Name "q") (lamApp (lamI "x") (lamI "x")), 0)
+            ShouldSucceed (lamY, 0)
+            ShouldSucceed (lamApp (lamVarTerm "Q") lamY, 0)
+            ShouldSucceed (lamAbs (Name "s") lamY, 0)
+            ShouldSucceed (lamY, 1)
 
             // Partial application
-            ShouldSucceed (NormalForm <| lamAbs (Name "y") (lamApp (lamI "S") (lamVarTerm "K")), ReductionCount 1)
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "w") (lamApp lamOmega (lamApp (lamVarTerm "w") lamOmega)),
-                ReductionCount 1
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamApp (lamVarTerm "S") (lamAbs (Name "y") (lamApp lamY (lamVarTerm "S"))),
-                ReductionCount 1
-            )
+            ShouldSucceed (lamAbs (Name "y") (lamApp (lamI "S") (lamVarTerm "K")), 1)
+            ShouldSucceed (lamAbs (Name "w") (lamApp lamOmega (lamApp (lamVarTerm "w") lamOmega)), 1)
+            ShouldSucceed (lamApp (lamVarTerm "S") (lamAbs (Name "y") (lamApp lamY (lamVarTerm "S"))), 1)
         ]
 
     let testCases_StrongAndWeak =
@@ -574,75 +503,41 @@ module ReducerTests =
     let expectedResults_WithEta =
         [
             // Eta conversion
-            ShouldSucceed (NormalForm lamOmega, ReductionCount 0)
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "S") (lamApp (lamApp (lamVarTerm "S") (lamVarTerm "K")) (lamVarTerm "S")),
-                ReductionCount 0
-            )
-            ShouldSucceed (NormalForm <| lamVarTerm "hehehe", ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "x") (lamVarTerm "y"), ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "A") (lamVarTerm "A"), ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamApp (lamVarTerm "T") lamOmega, ReductionCount 0)
-            ShouldSucceed (NormalForm <| lamVarTerm "z", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamVarTerm "a", ReductionCount 1)
-            ShouldSucceed (NormalForm <| lamI "K", ReductionCount 0)
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "qqq") (lamApp (lamVarTerm "Z") (lamVarTerm "P")),
-                ReductionCount 0
-            )
-            ShouldSucceed (NormalForm <| lamVarTerm "Z", ReductionCount 0)
+            ShouldSucceed (lamOmega, 0)
+            ShouldSucceed (lamAbs (Name "S") (lamApp (lamApp (lamVarTerm "S") (lamVarTerm "K")) (lamVarTerm "S")), 0)
+            ShouldSucceed (lamVarTerm "hehehe", 0)
+            ShouldSucceed (lamApp (lamVarTerm "x") (lamVarTerm "y"), 0)
+            ShouldSucceed (lamApp (lamVarTerm "A") (lamVarTerm "A"), 0)
+            ShouldSucceed (lamApp (lamVarTerm "T") lamOmega, 0)
+            ShouldSucceed (lamVarTerm "z", 1)
+            ShouldSucceed (lamVarTerm "a", 1)
+            ShouldSucceed (lamI "K", 0)
+            ShouldSucceed (lamAbs (Name "qqq") (lamApp (lamVarTerm "Z") (lamVarTerm "P")), 0)
+            ShouldSucceed (lamVarTerm "Z", 0)
         ]
 
     let expectedResults_WithoutEta =
         [
             // Eta conversion
-            ShouldSucceed (NormalForm lamOmega, ReductionCount 0)
+            ShouldSucceed (lamOmega, 0)
+            ShouldSucceed (lamAbs (Name "S") (lamApp (lamApp (lamVarTerm "S") (lamVarTerm "K")) (lamVarTerm "S")), 0)
+            ShouldSucceed (lamAbs (Name "x") (lamApp (lamVarTerm "hehehe") (lamVarTerm "x")), 0)
+            ShouldSucceed (lamAbs (Name "z") (lamApp (lamApp (lamVarTerm "x") (lamVarTerm "y")) (lamVarTerm "z")), 0)
             ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "S") (lamApp (lamApp (lamVarTerm "S") (lamVarTerm "K")) (lamVarTerm "S")),
-                ReductionCount 0
+                lamApp (lamVarTerm "A") (lamAbs (Name "VAR") (lamApp (lamVarTerm "A") (lamVarTerm "VAR"))),
+                0
             )
+            ShouldSucceed (lamAbs (Name "Q") (lamApp (lamApp (lamVarTerm "T") lamOmega) (lamVarTerm "Q")), 0)
+            ShouldSucceed (lamAbs (Name "y") (lamApp (lamVarTerm "z") (lamVarTerm "y")), 1)
+            ShouldSucceed (lamAbs (Name "a''") (lamApp (lamVarTerm "a") (lamVarTerm "a''")), 1)
+            ShouldSucceed (lamAbs (Name "K") (lamAbs (Name "x") (lamApp (lamVarTerm "K") (lamVarTerm "x"))), 0)
             ShouldSucceed (
-                NormalForm <| lamAbs (Name "x") (lamApp (lamVarTerm "hehehe") (lamVarTerm "x")),
-                ReductionCount 0
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "z") (lamApp (lamApp (lamVarTerm "x") (lamVarTerm "y")) (lamVarTerm "z")),
-                ReductionCount 0
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamApp (lamVarTerm "A") (lamAbs (Name "VAR") (lamApp (lamVarTerm "A") (lamVarTerm "VAR"))),
-                ReductionCount 0
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "Q") (lamApp (lamApp (lamVarTerm "T") lamOmega) (lamVarTerm "Q")),
-                ReductionCount 0
-            )
-            ShouldSucceed (NormalForm <| lamAbs (Name "y") (lamApp (lamVarTerm "z") (lamVarTerm "y")), ReductionCount 1)
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "a''") (lamApp (lamVarTerm "a") (lamVarTerm "a''")),
-                ReductionCount 1
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs (Name "K") (lamAbs (Name "x") (lamApp (lamVarTerm "K") (lamVarTerm "x"))),
-                ReductionCount 0
-            )
-            ShouldSucceed (
-                NormalForm
-                <| lamAbs
+                lamAbs
                     (Name "qqq")
                     (lamApp (lamVarTerm "Z") (lamAbs (Name "t") (lamApp (lamVarTerm "P") (lamVarTerm "t")))),
-                ReductionCount 0
+                0
             )
-            ShouldSucceed (
-                NormalForm <| lamAbs (Name "x'") (lamApp (lamVarTerm "Z") (lamVarTerm "x'")),
-                ReductionCount 0
-            )
+            ShouldSucceed (lamAbs (Name "x'") (lamApp (lamVarTerm "Z") (lamVarTerm "x'")), 0)
         ]
 
     let testCases_EtaConversions =
@@ -682,8 +577,7 @@ module ReducerTests =
         let result = reducer.Reduce term
 
         match result, expectedResult with
-        | Success (NormalForm term, ReductionCount count),
-          ShouldSucceed (NormalForm expectedTerm, ReductionCount expectedCount) ->
+        | Success (term, count), ShouldSucceed (expectedTerm, expectedCount) ->
             term |> should equal expectedTerm
             count |> should equal expectedCount
         | Failure _, ShouldFail -> ()

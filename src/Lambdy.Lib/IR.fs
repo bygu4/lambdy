@@ -6,28 +6,30 @@ open Lambdy.Lib.ParseTree
 module IR =
 
     type IR =
-        | Variable of VariableName * BoundValue
-        | Abstraction of VariableName * DelayedAlpha * IR
-        | Application of IR * IR
-
-    and BoundValue = | BoundValue of IR option
-    and DelayedAlpha = | DelayedAlpha of VariableName option
+        | Variable of name : VariableName * boundValue : IR option
+        | Numeral of number : uint16
+        | Abstraction of variable : VariableName * delayedAlpha : VariableName option * body : IR
+        | Application of left : IR * right : IR
 
     // ============= Constructors =========================================
 
-    let irBoundVal = Some >> BoundValue
-    let irDelayedAlpha = Some >> DelayedAlpha
-
-    let inline irVar name = Variable (name, BoundValue None)
-    let inline irVarBound name boundValue = Variable (name, irBoundVal boundValue)
-
-    let inline irAbs var body =
-        Abstraction (var, DelayedAlpha None, body)
-
-    let inline irAbsAlpha var alpha body =
-        Abstraction (var, irDelayedAlpha alpha, body)
-
+    let inline irVar name = Variable (name, None)
+    let inline irVarBound name boundValue = Variable (name, Some boundValue)
+    let inline irNum num = Numeral num
+    let inline irAbs var body = Abstraction (var, None, body)
+    let inline irAbsAlpha var alpha body = Abstraction (var, Some alpha, body)
     let inline irApp left right = Application (left, right)
+
+    // ============= Church numerals ======================================
+
+    [<TailCall>]
+    let rec private churchNumeral' n cont =
+        match n with
+        | 0us -> irVar (Name "x") |> cont
+        | n -> churchNumeral' (n - 1us) (fun numeral -> irApp (irVar (Name "f")) numeral |> cont)
+
+    let churchNumeral n =
+        churchNumeral' n (fun app -> irAbs (Name "f") (irAbs (Name "x") app))
 
     // ============= IR to string conversion ==============================
 
@@ -35,6 +37,7 @@ module IR =
     let rec private irToString' strict parenthesize closing ir cont =
         match ir with
         | Variable (Name var, _) -> cont var
+        | Numeral number -> number.ToString () |> cont
         | Application (left, right) ->
             let closedAbstraction = parenthesize || closing
             let parenthesizeLeft = strict || left.IsAbstraction
@@ -67,7 +70,7 @@ module IR =
                 true
                 body
                 (fun bodyStr ->
-                    let termStr = $"{MainLambdaChar}{var}.{bodyStr}"
+                    let termStr = $"{lambdaChars.[0]}{var}.{bodyStr}"
 
                     if parenthesize then $"({termStr})" else termStr
                     |> cont
@@ -81,9 +84,10 @@ module IR =
     [<TailCall>]
     let rec private freeVars' closure term cont =
         match term with
-        | Variable (var, BoundValue (Some boundValue)) when closure ->
+        | Variable (var, Some boundValue) when closure ->
             freeVars' closure boundValue (fun valueVars -> Set.add var valueVars |> cont)
         | Variable (var, _) -> set [ var ] |> cont
+        | Numeral _ -> Set.empty |> cont
         | Abstraction (var, _, body) -> freeVars' closure body (fun bodyVars -> Set.remove var bodyVars |> cont)
         | Application (left, right) ->
             freeVars'
