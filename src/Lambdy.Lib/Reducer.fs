@@ -18,6 +18,10 @@ module Reducer =
 
         // ============= Diagnostic logging ===================================
 
+        let currentlyReducing term =
+            ILogger.TryLog (logger, Diagnostic <| CurrentlyReducing term)
+            term
+
         let substitute var sub =
             ILogger.TryLog (logger, Diagnostic <| Substitution (var, sub))
             sub
@@ -25,7 +29,7 @@ module Reducer =
         let bindValue term var bindings =
             match Map.tryFind var bindings with
             | Some value ->
-                ILogger.TryLog (logger, Diagnostic <| ValueBinding (var, value))
+                ILogger.TryLog (logger, Diagnostic <| BoundValue (var, value))
                 irVarBound var value
             | None -> term
 
@@ -104,7 +108,7 @@ module Reducer =
                     let y = nextFreeVar x (Set.union freeVarsBody freeVarsSub)
 
                     if capturedX then
-                        ILogger.TryLog (logger, Normal <| AlphaConversion (term, x, y))
+                        ILogger.TryLog (logger, Detailed <| AlphaConversion (term, x, y))
 
                         substitute'
                             x
@@ -129,35 +133,35 @@ module Reducer =
 
         let substitute var sub term = substitute' var sub term id
 
-        // ============= Normal logging =======================================
+        // ============= Normal and detailed logging ==========================
 
         let currentTerm term root =
-            ILogger.TryLog (logger, Normal <| CurrentTerm (root term))
+            ILogger.TryLog (logger, Normal <| CurrentTerm (reductionCount, root term))
             term
 
         let expandVar var boundValue root =
             let res = boundValue
-            ILogger.TryLog (logger, Normal <| Expansion (var, res))
+            ILogger.TryLog (logger, Detailed <| Expansion (var, res))
             currentTerm res root
 
         let expandNum num root =
             let name = num.ToString () |> Name
             let res = churchNumeral num
-            ILogger.TryLog (logger, Normal <| Expansion (name, res))
+            ILogger.TryLog (logger, Detailed <| Expansion (name, res))
             currentTerm res root
 
         let alphaConversion src x y body root =
-            ILogger.TryLog (logger, Normal <| AlphaConversion (src, x, y))
+            ILogger.TryLog (logger, Detailed <| AlphaConversion (src, x, y))
             let res = irAbs y (substitute x (irVar y) body)
             currentTerm res root
 
         let etaReduction src left root =
-            ILogger.TryLog (logger, Normal <| EtaReduction (src, left))
+            ILogger.TryLog (logger, Detailed <| EtaReduction (src, left))
             let res = left
             currentTerm res root
 
         let betaReduction src body var sub root =
-            ILogger.TryLog (logger, Normal <| BetaReduction (src, body, var, sub))
+            ILogger.TryLog (logger, Detailed <| BetaReduction (src, body, var, sub))
             let res = substitute var sub body
             currentTerm res root
 
@@ -266,9 +270,7 @@ module Reducer =
                                 reduceApp curStrategy true (irApp reducedLeft right) reducedLeft right root cont
                             ))
 
-            ILogger.TryLog (logger, Detailed <| CurrentlyReducing term)
-
-            match term with
+            match currentlyReducing term with
             | Variable (var, boundValue) -> reduceVar curStrategy term var boundValue root cont
             | Numeral num -> reduceNum num root cont
             | Abstraction (var, alpha, body) -> reduceAbs curStrategy term var alpha body root cont

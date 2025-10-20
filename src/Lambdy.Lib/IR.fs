@@ -37,7 +37,7 @@ module IR =
     let rec private irToString' strict parenthesize closing ir cont =
         match ir with
         | Variable (Name var, _) -> cont var
-        | Numeral number -> number.ToString () |> cont
+        | Numeral num -> num.ToString () |> cont
         | Application (left, right) ->
             let closedAbstraction = parenthesize || closing
             let parenthesizeLeft = strict || left.IsAbstraction

@@ -113,16 +113,15 @@ module LambdaTermTests =
 
             Gen.sized genTerm |> Arb.fromGen
 
-    // For some reason this property is only properly checked when passing an additional argument :(.
     [<Property(Arbitrary = [| typeof<GenTerm> |])>]
-    let ``Lambda term doesn't change after IR conversions`` initial (_ : bool) =
-        initial |> toIR |> toLambdaTerm |> (=) initial
+    let ``Lambda term doesn't change after IR conversions`` initial expand =
+        initial |> toIR |> toLambdaTerm expand |> (=) initial
 
     [<Property(Arbitrary = [| typeof<GenTerm> |])>]
-    let ``Lambda term is equal to its parsed string representation`` initial strict parenthesize =
+    let ``Lambda term is equal to its parsed string representation`` initial strict parenthesize expand =
         initial
         |> lamToString strict parenthesize
         |> run term
         |> function
-            | Success (parseTree, _, _) -> parseTree |> buildTermAST |> toLambdaTerm |> (=) initial
+            | Success (parseTree, _, _) -> parseTree |> buildTermAST |> toLambdaTerm expand |> (=) initial
             | Failure _ -> false

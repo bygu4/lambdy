@@ -8,6 +8,7 @@ open FParsec
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.Parsers
 open Lambdy.Lib.AST
+open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.Strategy
 open Lambdy.Lib.Reducer
 open Lambdy.Lib.Interfaces.IReducer
@@ -118,8 +119,12 @@ module LambdaInterpreter =
                 match command with
                 | Reset ->
                     reducer.Reset ()
-                    ILogger.TryLog (logger, Detailed WasReset)
-                | Scope -> ILogger.TryLog (logger, Minimal <| CurrentScope reducer.Scope)
+                    ILogger.TryLog (logger, Diagnostic WasReset)
+                | Scope ->
+                    let scope =
+                        List.map (fun (var, value) -> var, value, toLambdaTerm true value) reducer.Scope
+
+                    ILogger.TryLog (logger, Minimal <| CurrentScope scope)
                 | Help -> ILogger.TryLog (logger, Minimal SyntaxHelp)
                 | Clear -> ILogger.TryClearBuffer logger
                 | Exit -> reader.Close ()
@@ -131,16 +136,22 @@ module LambdaInterpreter =
                 match buildExpressionAST primary with
                 | Binding (var, term) ->
                     reducer.AddBinding (var, term)
-                    ILogger.TryLog (logger, Detailed <| NewBinding (var, term))
+                    ILogger.TryLog (logger, Diagnostic <| NewBinding (var, term, toLambdaTerm true term))
                     None
                 | Result term ->
                     ILogger.TryLog (logger, Normal <| StartedReducing term)
 
                     match reducer.Reduce term with
-                    | Success _ as success -> Output (Line currentLine, success) |> Some
-                    | _ as failure ->
+                    | ReductionResult.Success (normalForm, reductionCount) ->
+                        let scope =
+                            List.map (fun (var, value) -> var, toLambdaTerm true value) reducer.Scope
+
+                        let alphaEquiv = findAlphaEquiv scope normalForm
+                        let result = Success (normalForm, alphaEquiv, reductionCount)
+                        Output (Line currentLine, result) |> Some
+                    | ReductionResult.Failure errorMessage ->
                         reductionFailed <- true
-                        Output (Line currentLine, failure) |> Some
+                        Output (Line currentLine, Failure errorMessage) |> Some
                 | Command command -> interpretCommand command
                 | Empty -> None
 

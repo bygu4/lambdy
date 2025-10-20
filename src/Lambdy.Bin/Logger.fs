@@ -5,7 +5,6 @@ open System
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
 open Lambdy.Lib.LambdaTerm
-open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
 open Lambdy.Lib.Interfaces.ILogger
 open Lambdy.Bin.Verbosity
@@ -41,32 +40,36 @@ module Logger =
         let handleSyntaxHelp () = printSyntaxHelp ()
 
         let handleCurrentScope bindings =
-            let mutable i = 1
-
-            for Name var, boundValue in bindings do
-                printfn $"{Indent}{i}) {var} <- {irToString strictTerms false boundValue}"
-                i <- i + 1
+            for Name var, boundValue, expanded in bindings do
+                printfn $" -- {var} := {irToString strictTerms false boundValue}"
+                printfn $"{Indent}expands to: {lamToString strictTerms false expanded}"
 
         let handleInterpreterOutput (Output (Line line, result)) =
             let lineStr = if lineNumber then $"[Line {line}]: " else String.Empty
 
             match result with
-            | Success (term, _) -> Logger.PrintSuccess (lineStr + lamToString strictTerms false term)
+            | Success (normalForm, Some alphaEquivalent, reductionCount) ->
+                Logger.PrintSuccess
+                    $"| beta-normal form: {lamToString strictTerms false normalForm}\n| alpha equivalent: {lamToString strictTerms false alphaEquivalent}\n| reduction count: {reductionCount}"
+            | Success (normalForm, None, reductionCount) ->
+                Logger.PrintSuccess
+                    $"| beta-normal form: {lamToString strictTerms false normalForm}\n| reduction count: {reductionCount}"
             | Failure message -> Logger.PrintError (lineStr + message)
 
         // ------------- Normal ---------------------------------------
 
         let handleStartedReducing = irToString strictTerms false >> printfn "%s"
 
-        let handleCurrentTerm = irToString strictTerms false >> printfn "%s"
+        let handleCurrentTerm reductionCount term =
+            printfn $"#{reductionCount} - {irToString strictTerms false term}"
 
-        let handleUnbinding (Name var) term =
+        let handleExpansion (Name var) term =
             printNormalLog "subst" $"{var} -> {irToString strictTerms false term}"
 
         let handleAlphaConversion src (Name var) (Name sub) =
             printNormalLog "alpha" $"{irToString strictTerms true src}: {var} -> {sub}"
 
-        let handleEtaConversion src res =
+        let handleEtaReduction src res =
             printNormalLog "eta" $"{irToString strictTerms false src} -> {irToString strictTerms false res}"
 
         let handleBetaReduction src body (Name var) sub =
@@ -80,8 +83,9 @@ module Logger =
         let handleCurrentlyReducing term =
             printfn $"reducing {irToString strictTerms false term} ..."
 
-        let handleNewBinding (Name var) value =
-            printDetailedLog "bind" $"{var} <- {irToString strictTerms false value}"
+        let handleNewBinding (Name var) value expanded =
+            printDetailedLog "bind" $"{var} := {irToString strictTerms false value}"
+            printfn $"{Indent}expands to: {lamToString strictTerms false expanded}"
 
         let handleWasReset () =
             printDetailedLog "reset" "cleared current scope"
@@ -91,10 +95,10 @@ module Logger =
         let handleSubstitution (Name var) sub =
             printDiagnosticLog "subst" $"{var} -> {irToString strictTerms false sub}"
 
-        let handleValueBinding (Name var) value =
+        let handleBoundValue (Name var) value =
             printDiagnosticLog "bind" $"{var} <- {irToString strictTerms false value}"
 
-        let handleDelayedConversion term (Name var) (Name sub) =
+        let handleDelayedAlpha term (Name var) (Name sub) =
             printDiagnosticLog "delay" $"{irToString strictTerms false term}: {var} -> {sub}"
 
         // ============= Arbitrary record handler =============================
@@ -106,17 +110,17 @@ module Logger =
             | Minimal (CurrentScope bindings) -> handleCurrentScope bindings
             | Minimal (InterpreterOutput output) -> handleInterpreterOutput output
             | Normal (StartedReducing term) -> handleStartedReducing term
-            | Normal (CurrentTerm term) -> handleCurrentTerm term
-            | Normal (Expansion (var, term)) -> handleUnbinding var term
-            | Normal (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
-            | Normal (EtaReduction (term, res)) -> handleEtaConversion term res
-            | Normal (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
-            | Detailed (CurrentlyReducing term) -> handleCurrentlyReducing term
-            | Detailed (NewBinding (var, value)) -> handleNewBinding var value
-            | Detailed WasReset -> handleWasReset ()
+            | Normal (CurrentTerm (reductionCount, term)) -> handleCurrentTerm reductionCount term
+            | Detailed (Expansion (var, term)) -> handleExpansion var term
+            | Detailed (AlphaConversion (term, var, sub)) -> handleAlphaConversion term var sub
+            | Detailed (EtaReduction (term, res)) -> handleEtaReduction term res
+            | Detailed (BetaReduction (src, body, var, sub)) -> handleBetaReduction src body var sub
+            | Diagnostic (CurrentlyReducing term) -> handleCurrentlyReducing term
             | Diagnostic (Substitution (var, sub)) -> handleSubstitution var sub
-            | Diagnostic (ValueBinding (var, value)) -> handleValueBinding var value
-            | Diagnostic (DelayedAlpha (term, var, sub)) -> handleDelayedConversion term var sub
+            | Diagnostic (BoundValue (var, value)) -> handleBoundValue var value
+            | Diagnostic (DelayedAlpha (term, var, sub)) -> handleDelayedAlpha term var sub
+            | Diagnostic (NewBinding (var, value, expanded)) -> handleNewBinding var value expanded
+            | Diagnostic WasReset -> handleWasReset ()
 
         // ============= Members ==============================================
 

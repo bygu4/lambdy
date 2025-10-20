@@ -4,33 +4,34 @@ open System.Threading.Tasks
 
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
+open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.Interfaces.ILambdaInterpreter
 
 module ILogger =
 
     type Minimal =
         | WaitingForInput
-        | CurrentScope of bindings : (VariableName * IR) list
+        | CurrentScope of bindings : (VariableName * IR * LambdaTerm) list
         | SyntaxHelp
         | InterpreterOutput of output : InterpreterOutput
 
     type Normal =
         | StartedReducing of term : IR
-        | CurrentTerm of term : IR
+        | CurrentTerm of reductionCount : int * term : IR
+
+    type Detailed =
         | Expansion of var : VariableName * value : IR
         | AlphaConversion of src : IR * var : VariableName * sub : VariableName
         | EtaReduction of src : IR * res : IR
         | BetaReduction of src : IR * body : IR * var : VariableName * sub : IR
 
-    type Detailed =
-        | CurrentlyReducing of term : IR
-        | NewBinding of var : VariableName * value : IR
-        | WasReset
-
     type Diagnostic =
+        | CurrentlyReducing of term : IR
         | Substitution of var : VariableName * sub : IR
-        | ValueBinding of var : VariableName * value : IR
+        | BoundValue of var : VariableName * value : IR
         | DelayedAlpha of term : IR * var : VariableName * sub : VariableName
+        | NewBinding of var : VariableName * value : IR * expanded : LambdaTerm
+        | WasReset
 
     type LogRecord =
         | Minimal of record : Minimal
