@@ -62,6 +62,8 @@ module LambdaTerm =
 
         toLambdaTerm' expand ir Map.empty id
 
+    let expand = toLambdaTerm true
+
     let lamToString strict parenthesize = toIR >> irToString strict parenthesize
 
     // ============= Alpha equivalence ====================================

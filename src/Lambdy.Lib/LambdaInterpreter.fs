@@ -25,6 +25,7 @@ module LambdaInterpreter =
             interactive : bool,
             ?strategy : Strategy,
             ?etaConversions : bool,
+            ?stepByStep : bool,
             ?reductionLimit : int,
             ?logger : ILogger
         )
@@ -35,6 +36,7 @@ module LambdaInterpreter =
             new Reducer (
                 ?strategy = strategy,
                 ?etaConversions = etaConversions,
+                ?stepByStep = stepByStep,
                 ?reductionLimit = reductionLimit,
                 ?logger = logger
             )
@@ -110,9 +112,21 @@ module LambdaInterpreter =
         /// Analyze the next line in the stream and get the interpretation result.
         member private _.RunOnNextLineAsync () =
 
-            let logIfInteractive record =
+            let inline logIfInteractive record =
                 if interactive then
                     ILogger.TryLog (logger, record)
+
+            let rec toOutput =
+                function
+                | Done (normalForm, reductionCount) ->
+                    let scope = List.map (fun (var, value) -> var, expand value) reducer.Scope
+                    let alphaEquiv = findAlphaEquiv scope normalForm
+                    let result = Success (normalForm, alphaEquiv, reductionCount)
+                    Output (Line currentLine, result)
+                | Failed errorMessage ->
+                    reductionFailed <- true
+                    Output (Line currentLine, Failure errorMessage)
+                | Incomplete cont -> cont () |> toOutput
 
             /// Execute the given special interpreter `command`.
             let inline interpretCommand command =
@@ -121,38 +135,25 @@ module LambdaInterpreter =
                     reducer.Reset ()
                     ILogger.TryLog (logger, Diagnostic WasReset)
                 | Scope ->
-                    let scope =
-                        List.map (fun (var, value) -> var, value, toLambdaTerm true value) reducer.Scope
-
+                    let scope = List.map (fun (var, value) -> var, value, expand value) reducer.Scope
                     ILogger.TryLog (logger, Minimal <| CurrentScope scope)
                 | Help -> ILogger.TryLog (logger, Minimal SyntaxHelp)
                 | Clear -> ILogger.TryClearBuffer logger
                 | Exit -> reader.Close ()
-
-                None
 
             /// Interpret the given `primary` expression representation.
             let inline interpretExpression primary =
                 match buildExpressionAST primary with
                 | Binding (var, term) ->
                     reducer.AddBinding (var, term)
-                    ILogger.TryLog (logger, Diagnostic <| NewBinding (var, term, toLambdaTerm true term))
+                    ILogger.TryLog (logger, Diagnostic <| NewBinding (var, term, expand term))
                     None
                 | Result term ->
                     ILogger.TryLog (logger, Normal <| StartedReducing term)
-
-                    match reducer.Reduce term with
-                    | ReductionResult.Success (normalForm, reductionCount) ->
-                        let scope =
-                            List.map (fun (var, value) -> var, toLambdaTerm true value) reducer.Scope
-
-                        let alphaEquiv = findAlphaEquiv scope normalForm
-                        let result = Success (normalForm, alphaEquiv, reductionCount)
-                        Output (Line currentLine, result) |> Some
-                    | ReductionResult.Failure errorMessage ->
-                        reductionFailed <- true
-                        Output (Line currentLine, Failure errorMessage) |> Some
-                | Command command -> interpretCommand command
+                    reducer.Reduce term |> toOutput |> Some
+                | Command command ->
+                    interpretCommand command
+                    None
                 | Empty -> None
 
             async {

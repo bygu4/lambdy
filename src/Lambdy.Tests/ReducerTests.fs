@@ -581,8 +581,8 @@ module ReducerTests =
         let result = reducer.Reduce term
 
         match result, expectedResult with
-        | Success (term, count), ShouldSucceed (expectedTerm, expectedCount) ->
+        | Done (term, count), ShouldSucceed (expectedTerm, expectedCount) ->
             term |> should equal expectedTerm
             count |> should equal expectedCount
-        | Failure _, ShouldFail -> ()
+        | Failed _, ShouldFail -> ()
         | _ -> failwith "Results don't match!"

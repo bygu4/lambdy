@@ -10,9 +10,12 @@ open Lambdy.Lib.Interfaces.IReducer
 
 module Reducer =
 
-    type Reducer(?strategy : Strategy, ?etaConversions : bool, ?reductionLimit : int, ?logger : ILogger) =
+    type Reducer
+        (?strategy : Strategy, ?etaConversions : bool, ?stepByStep : bool, ?reductionLimit : int, ?logger : ILogger)
+        =
         let strategy = defaultArg strategy normalOrder
         let etaConversions = defaultArg etaConversions true
+        let stepByStep = defaultArg stepByStep false
 
         let mutable bindings : (VariableName * IR) list = []
         let mutable reductionCount = 0
@@ -172,26 +175,27 @@ module Reducer =
             let rec reduce' curStrategy term root =
 
                 let inline tryBetaReduction term body var sub root =
-                    maybeContinuation {
+                    computation stepByStep {
                         match reductionLimit with
-                        | Some limit when reductionCount >= limit -> yield $"Exceeded the reduction limit: {limit}."
+                        | Some limit when reductionCount >= limit ->
+                            return Computation.Failed $"Exceeded the reduction limit: {limit}."
                         | _ ->
                             reductionCount <- reductionCount + 1
-                            return betaReduction term body var sub root
+                            yield Computation.Done <| betaReduction term body var sub root
                     }
 
                 let inline reduceVar curStrategy term var boundValue root =
-                    maybeContinuation {
+                    computation stepByStep {
                         match boundValue with
                         | Some boundValue -> return! reduce' curStrategy (expandVar var boundValue root) root
-                        | _ -> return term
+                        | _ -> return Computation.Done term
                     }
 
                 let inline reduceNum num root =
-                    maybeContinuation { return! reduce' curStrategy (expandNum num root) root }
+                    computation stepByStep { return! reduce' curStrategy (expandNum num root) root }
 
                 let inline reduceAbs (Strategy (_, Strong strong) as curStrategy) term var alpha body root =
-                    maybeContinuation {
+                    computation stepByStep {
                         match alpha, body with
 
                         | _, Application (left, right) when
@@ -206,24 +210,24 @@ module Reducer =
 
                         | _, body when strong ->
                             let! reducedBody = reduce' curStrategy body (fun body -> irAbs var body |> root)
-                            return irAbs var reducedBody
+                            return Computation.Done <| irAbs var reducedBody
 
-                        | _ -> return term
+                        | _ -> return Computation.Done term
                     }
 
                 let rec reduceApp (Strategy (Strict strict, _) as curStrategy) finish term left right root =
-                    maybeContinuation {
+                    computation stepByStep {
                         match left with
 
                         | Abstraction (var, _, body) when finish || not strict ->
                             let! reducedTerm = tryBetaReduction term body var right root
                             return! reduce' curStrategy reducedTerm root
 
-                        | _ when finish && strict -> return irApp left right
+                        | _ when finish && strict -> return Computation.Done <| irApp left right
 
                         | _ when finish ->
                             let! reducedRight = reduce' strategy right (fun right -> irApp left right |> root)
-                            return irApp left reducedRight
+                            return Computation.Done <| irApp left reducedRight
 
                         | _ when strict ->
                             let! reducedLeft = reduce' curStrategy left (fun left -> irApp left right |> root)
@@ -283,14 +287,15 @@ module Reducer =
         member _.Reset () = bindings <- []
 
         member this.Reduce term =
-            reductionCount <- 0
 
-            term
-            |> bindMany (this.Scope |> Map.ofList)
-            |> reduce
-            |> function
-                | Ok reducedTerm -> Success (finalize reducedTerm, reductionCount)
-                | Error msg -> Failure msg
+            let rec toResult =
+                function
+                | Computation.Done reducedTerm -> Done (finalize reducedTerm, reductionCount)
+                | Computation.Failed msg -> Failed msg
+                | Computation.Incomplete cont -> Incomplete (cont >> toResult)
+
+            reductionCount <- 0
+            term |> bindMany (this.Scope |> Map.ofList) |> reduce |> toResult
 
         interface IReducer with
             member this.Scope = this.Scope
