@@ -1,5 +1,6 @@
 ﻿namespace Lambdy.Lib
 
+open Lambdy.Lib.Continuation
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.IR
@@ -42,96 +43,96 @@ module Reducer =
 
         // ============= Value binding ========================================
 
-        [<TailCall>]
-        let rec bindMany' bindings term cont =
-            match term with
+        let bindMany bindings term =
+            let rec bindMany' bindings term =
+                continuation {
+                    match term with
 
-            | _ when Map.isEmpty bindings -> cont term
+                    | _ when Map.isEmpty bindings -> return term
 
-            | Variable (x, _) -> bindValue term x bindings |> cont
+                    | Variable (x, _) -> return bindValue term x bindings
 
-            | Numeral _ -> cont term
+                    | Numeral _ -> return term
 
-            | Abstraction (x, _, body) ->
-                let bindings = Map.remove x bindings
+                    | Abstraction (x, _, body) ->
+                        let bindings = Map.remove x bindings
 
-                if Map.isEmpty bindings then
-                    cont term
-                else
+                        if Map.isEmpty bindings then
+                            return term
+                        else
 
-                let vars = set <| Map.keys bindings
-                let freeVarsBody = freeVars false body
+                        let vars = set <| Map.keys bindings
+                        let freeVarsBody = freeVars false body
 
-                let freeVarsSub =
-                    Set.intersect vars freeVarsBody
-                    |> Seq.map (fun var -> bindings.[var] |> freeVars true)
-                    |> Set.unionMany
+                        let freeVarsSub =
+                            Set.intersect vars freeVarsBody
+                            |> Seq.map (fun var -> bindings.[var] |> freeVars true)
+                            |> Set.unionMany
 
-                let alpha =
-                    if Set.contains x freeVarsSub then
-                        Some <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
-                    else
-                        None
+                        let alpha =
+                            if Set.contains x freeVarsSub then
+                                Some <| nextFreeVar x (Set.union freeVarsBody freeVarsSub)
+                            else
+                                None
 
-                bindMany' bindings body (fun boundBody -> delayConversion term x alpha boundBody |> cont)
+                        let! boundBody = bindMany' bindings body
+                        return delayConversion term x alpha boundBody
 
-            | Application (left, right) ->
-                bindMany'
-                    bindings
-                    left
-                    (fun boundLeft -> bindMany' bindings right (fun boundRight -> irApp boundLeft boundRight |> cont))
+                    | Application (left, right) ->
+                        let! boundLeft = bindMany' bindings left
+                        let! boundRight = bindMany' bindings right
+                        return irApp boundLeft boundRight
+                } in
 
-        let bindMany bindings term = bindMany' bindings term id
+            bindMany' bindings term id
 
         // ============= Substitution =========================================
 
-        [<TailCall>]
-        let rec substitute' var sub term cont =
-            match term with
+        let substitute var sub term =
+            let rec substitute' var sub term =
+                continuation {
+                    match term with
 
-            | Variable (x, _) when x = var -> substitute var sub |> cont
+                    | Variable (x, _) when x = var -> return substitute var sub
 
-            | Abstraction (x, alpha, body) when x <> var ->
-                let freeVarsBody = freeVars false body
-                let freeVarsSub = freeVars true sub
+                    | Abstraction (x, alpha, body) when x <> var ->
+                        let freeVarsBody = freeVars false body
+                        let freeVarsSub = freeVars true sub
 
-                let willSubstitute = Set.contains var freeVarsBody
-                let capturedX = Set.contains x freeVarsSub
+                        let willSubstitute = Set.contains var freeVarsBody
+                        let capturedX = Set.contains x freeVarsSub
 
-                let capturedAlpha =
-                    match alpha with
-                    | Some y -> Set.contains y freeVarsSub
-                    | None -> false
+                        let capturedAlpha =
+                            match alpha with
+                            | Some y -> Set.contains y freeVarsSub
+                            | None -> false
 
-                if willSubstitute then
-                    let freeVarsBody = freeVars true body
-                    let y = nextFreeVar x (Set.union freeVarsBody freeVarsSub)
+                        if willSubstitute then
+                            let freeVarsBody = freeVars true body
+                            let y = nextFreeVar x (Set.union freeVarsBody freeVarsSub)
 
-                    if capturedX then
-                        ILogger.TryLog (logger, Detailed <| AlphaConversion (term, x, y))
+                            if capturedX then
+                                ILogger.TryLog (logger, Detailed <| AlphaConversion (term, x, y))
 
-                        substitute'
-                            x
-                            (irVar y)
-                            body
-                            (fun convBody -> substitute' var sub convBody (fun subsBody -> irAbs y subsBody |> cont))
-                    else
-                        let alpha = if capturedAlpha then Some y else alpha
-                        substitute' var sub body (fun subsBody -> delayConversion term x alpha subsBody |> cont)
+                                let! convBody = substitute' x (irVar y) body
+                                let! subsBody = substitute' var sub convBody
+                                return irAbs y subsBody
+                            else
+                                let alpha = if capturedAlpha then Some y else alpha
+                                let! subsBody = substitute' var sub body
+                                return delayConversion term x alpha subsBody
+                        else
+                            return term
 
-                else
-                    cont term
+                    | Application (left, right) ->
+                        let! subsLeft = substitute' var sub left
+                        let! subsRight = substitute' var sub right
+                        return irApp subsLeft subsRight
 
-            | Application (left, right) ->
-                substitute'
-                    var
-                    sub
-                    left
-                    (fun subsLeft -> substitute' var sub right (fun subsRight -> irApp subsLeft subsRight |> cont))
+                    | _ -> return term
+                } in
 
-            | _ -> cont term
-
-        let substitute var sub term = substitute' var sub term id
+            substitute' var sub term id
 
         // ============= Normal and detailed logging ==========================
 
@@ -167,146 +168,109 @@ module Reducer =
 
         // ============= Reduction ============================================
 
-        [<TailCall>]
-        let rec reduce' curStrategy term root cont =
+        let reduce term =
+            let rec reduce' curStrategy term root =
 
-            let inline maybe fail step =
-                function
-                | Ok result -> step result
-                | _ as err -> fail err
+                let inline tryBetaReduction term body var sub root =
+                    maybeContinuation {
+                        match reductionLimit with
+                        | Some limit when reductionCount >= limit -> yield $"Exceeded the reduction limit: {limit}."
+                        | _ ->
+                            reductionCount <- reductionCount + 1
+                            return betaReduction term body var sub root
+                    }
 
-            let inline tryBetaReduction term body var sub root cont =
-                match reductionLimit with
-                | Some limit when reductionCount >= limit -> Error $"Exceeded the reduction limit: {limit}." |> cont
-                | _ ->
-                    reductionCount <- reductionCount + 1
-                    betaReduction term body var sub root |> Ok |> cont
+                let inline reduceVar curStrategy term var boundValue root =
+                    maybeContinuation {
+                        match boundValue with
+                        | Some boundValue -> return! reduce' curStrategy (expandVar var boundValue root) root
+                        | _ -> return term
+                    }
 
-            let inline reduceVar curStrategy term var boundValue root cont =
-                match boundValue with
-                | Some boundValue -> reduce' curStrategy (expandVar var boundValue root) root cont
-                | _ -> Ok term |> cont
+                let inline reduceNum num root =
+                    maybeContinuation { return! reduce' curStrategy (expandNum num root) root }
 
-            let inline reduceNum num root cont =
-                reduce' curStrategy (expandNum num root) root cont
+                let inline reduceAbs (Strategy (_, Strong strong) as curStrategy) term var alpha body root =
+                    maybeContinuation {
+                        match alpha, body with
 
-            let inline reduceAbs (Strategy (_, Strong strong) as curStrategy) term var alpha body root cont =
-                match alpha, body with
+                        | _, Application (left, right) when
+                            etaConversions
+                            && right = irVar var
+                            && not <| Set.contains var (freeVars false left)
+                            ->
+                            return! reduce' curStrategy (etaReduction term left root) root
 
-                | _, Application (left, right) when
-                    etaConversions
-                    && right = irVar var
-                    && not <| Set.contains var (freeVars false left)
-                    ->
-                    reduce' curStrategy (etaReduction term left root) root cont
+                        | Some alpha, body when strong ->
+                            return! reduce' curStrategy (alphaConversion term var alpha body root) root
 
-                | Some alpha, body when strong ->
-                    reduce' curStrategy (alphaConversion term var alpha body root) root cont
+                        | _, body when strong ->
+                            let! reducedBody = reduce' curStrategy body (fun body -> irAbs var body |> root)
+                            return irAbs var reducedBody
 
-                | _, body when strong ->
-                    reduce'
-                        curStrategy
-                        body
-                        (fun body -> irAbs var body |> root)
-                        (maybe cont (fun reducedBody -> irAbs var reducedBody |> Ok |> cont))
+                        | _ -> return term
+                    }
 
-                | _ -> Ok term |> cont
+                let rec reduceApp (Strategy (Strict strict, _) as curStrategy) finish term left right root =
+                    maybeContinuation {
+                        match left with
 
-            let rec reduceApp (Strategy (Strict strict, _) as curStrategy) finish term left right root cont =
-                match left with
+                        | Abstraction (var, _, body) when finish || not strict ->
+                            let! reducedTerm = tryBetaReduction term body var right root
+                            return! reduce' curStrategy reducedTerm root
 
-                | Abstraction (var, _, body) when finish || not strict ->
-                    tryBetaReduction
-                        term
-                        body
-                        var
-                        right
-                        root
-                        (maybe cont (fun reducedTerm -> reduce' curStrategy reducedTerm root cont))
+                        | _ when finish && strict -> return irApp left right
 
-                | _ when finish && strict -> irApp left right |> Ok |> cont
+                        | _ when finish ->
+                            let! reducedRight = reduce' strategy right (fun right -> irApp left right |> root)
+                            return irApp left reducedRight
 
-                | _ when finish ->
-                    reduce'
-                        strategy
-                        right
-                        (fun right -> irApp left right |> root)
-                        (maybe cont (fun reducedRight -> irApp left reducedRight |> Ok |> cont))
+                        | _ when strict ->
+                            let! reducedLeft = reduce' curStrategy left (fun left -> irApp left right |> root)
+                            let! reducedRight = reduce' curStrategy right (fun right -> irApp reducedLeft right |> root)
+                            let partial = irApp reducedLeft reducedRight
+                            return! reduceApp curStrategy true partial reducedLeft reducedRight root
 
-                | _ when strict ->
-                    reduce'
-                        curStrategy
-                        left
-                        (fun left -> irApp left right |> root)
-                        (maybe
-                            cont
-                            (fun reducedLeft ->
-                                reduce'
-                                    curStrategy
-                                    right
-                                    (fun right -> irApp reducedLeft right |> root)
-                                    (maybe
-                                        cont
-                                        (fun reducedRight ->
-                                            reduceApp
-                                                curStrategy
-                                                true
-                                                (irApp reducedLeft reducedRight)
-                                                reducedLeft
-                                                reducedRight
-                                                root
-                                                cont
-                                        ))
-                            ))
+                        | _ ->
+                            let! reducedLeft = reduce' callByName left (fun left -> irApp left right |> root)
+                            let partial = irApp reducedLeft right
+                            return! reduceApp curStrategy true partial reducedLeft right root
+                    }
 
-                | _ ->
-                    reduce'
-                        callByName
-                        left
-                        (fun left -> irApp left right |> root)
-                        (maybe
-                            cont
-                            (fun reducedLeft ->
-                                reduceApp curStrategy true (irApp reducedLeft right) reducedLeft right root cont
-                            ))
+                match currentlyReducing term with
+                | Variable (var, boundValue) -> reduceVar curStrategy term var boundValue root
+                | Numeral num -> reduceNum num root
+                | Abstraction (var, alpha, body) -> reduceAbs curStrategy term var alpha body root
+                | Application (left, right) -> reduceApp curStrategy false term left right root in
 
-            match currentlyReducing term with
-            | Variable (var, boundValue) -> reduceVar curStrategy term var boundValue root cont
-            | Numeral num -> reduceNum num root cont
-            | Abstraction (var, alpha, body) -> reduceAbs curStrategy term var alpha body root cont
-            | Application (left, right) -> reduceApp curStrategy false term left right root cont
+            reduce' strategy term id id
 
-        let reduce term = reduce' strategy term id id
+        // ============= Expanding remaining variables ========================
 
-        // ============= IR to closure ========================================
+        let finalize term =
+            let rec finalize' term root =
+                continuation {
+                    match term with
+                    | Variable (var, None) -> return lamVar var
+                    | Variable (var, Some boundValue) -> return! finalize' (expandVar var boundValue root) root
+                    | Numeral num -> return! finalize' (expandNum num root) root
+                    | Abstraction (var, _, Application (left, right)) when
+                        etaConversions
+                        && right = irVar var
+                        && not <| Set.contains var (freeVars false left)
+                        ->
+                        return! finalize' (etaReduction term left root) root
+                    | Abstraction (var, None, body) ->
+                        let! finalBody = finalize' body (fun body -> irAbs var body |> root)
+                        return lamAbs var finalBody
+                    | Abstraction (x, Some y, body) -> return! finalize' (alphaConversion term x y body root) root
+                    | Application (left, right) ->
+                        let! finalLeft = finalize' left (fun left -> irApp left right |> root)
+                        let! finalRight = finalize' right (fun right -> irApp (toIR finalLeft) right |> root)
+                        return lamApp finalLeft finalRight
+                } in
 
-        [<TailCall>]
-        let rec closure' term root cont =
-            match term with
-            | Variable (var, None) -> lamVar var |> cont
-            | Variable (var, Some boundValue) -> closure' (expandVar var boundValue root) root cont
-            | Numeral num -> closure' (expandNum num root) root cont
-            | Abstraction (var, _, Application (left, right)) when
-                etaConversions
-                && right = irVar var
-                && not <| Set.contains var (freeVars false left)
-                ->
-                closure' (etaReduction term left root) root cont
-            | Abstraction (var, None, body) ->
-                closure' body (fun body -> irAbs var body |> root) (fun bodyClosure -> lamAbs var bodyClosure |> cont)
-            | Abstraction (x, Some y, body) -> closure' (alphaConversion term x y body root) root cont
-            | Application (left, right) ->
-                closure'
-                    left
-                    (fun left -> irApp left right |> root)
-                    (fun leftClosure ->
-                        closure'
-                            right
-                            (fun right -> irApp (toIR leftClosure) right |> root)
-                            (fun rightClosure -> lamApp leftClosure rightClosure |> cont)
-                    )
-
-        let closure term = closure' term id id
+            finalize' term id id
 
         // ============= Members ==============================================
 
@@ -314,7 +278,7 @@ module Reducer =
 
         member this.AddBinding (var, value) =
             let boundValue = bindMany (this.Scope |> Map.ofList) value
-            bindings <- (var, boundValue) :: bindings
+            bindings <- (var, boundValue) :: bindings |> List.distinctBy fst
 
         member _.Reset () = bindings <- []
 
@@ -325,7 +289,7 @@ module Reducer =
             |> bindMany (this.Scope |> Map.ofList)
             |> reduce
             |> function
-                | Ok reducedTerm -> Success (closure reducedTerm, reductionCount)
+                | Ok reducedTerm -> Success (finalize reducedTerm, reductionCount)
                 | Error msg -> Failure msg
 
         interface IReducer with

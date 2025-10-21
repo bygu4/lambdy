@@ -3,6 +3,7 @@
 open NUnit.Framework
 open FsUnit
 
+open Lambdy.Lib.Continuation
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
 open Lambdy.Lib.LambdaTerm
@@ -59,17 +60,20 @@ module ReducerTests =
 
     // ------------- Seq cartesian product ----------------------------
 
-    [<TailCall>]
-    let rec cartesian' first second cont =
-        if Seq.isEmpty first || Seq.isEmpty second then
-            cont Seq.empty
-        else
+    let cartesian first second =
+        let rec cartesian' first second =
+            continuation {
+                if Seq.isEmpty first || Seq.isEmpty second then
+                    return Seq.empty
+                else
 
-        let head = Seq.head first
-        let tail = Seq.tail first
-        cartesian' tail second (Seq.append (Seq.map (fun x -> head, x) second) >> cont)
+                let head = Seq.head first
+                let tail = Seq.tail first
+                let! rest = cartesian' tail second
+                return Seq.append (Seq.map (fun x -> head, x) second) rest
+            } in
 
-    let cartesian first second = cartesian' first second id
+        cartesian' first second id
 
     // ========================================================================
     // ============= Test cases ===============================================

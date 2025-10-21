@@ -2,6 +2,7 @@ namespace Lambdy.Lib
 
 open System
 
+open Lambdy.Lib.Continuation
 open Lambdy.Lib.ParseTree
 open Lambdy.Lib.IR
 
@@ -16,42 +17,49 @@ module AST =
         | Empty
 
     /// Build AST of a lambda term using the `primary` representation.
-    /// Use CPS with the given `cont`.
-    [<TailCall>]
-    let rec private buildTermAST' primary cont =
+    let buildTermAST primary =
+        let rec buildTermAST' primary =
 
-        /// Convert `primary` operand representation to the lambda term.
-        let inline buildOperandAST primary cont =
-            match primary with
-            | ParseTree.Variable var -> irVar var |> cont
-            | ParseTree.Numeral num -> irNum num |> cont
-            | Brackets term -> buildTermAST' term cont
+            /// Convert `primary` operand representation to the lambda term.
+            let inline buildOperandAST primary =
+                continuation {
+                    match primary with
+                    | ParseTree.Variable var -> return irVar var
+                    | ParseTree.Numeral num -> return irNum num
+                    | Brackets term -> return! buildTermAST' term
+                }
 
-        /// Build AST of lambda term application using term on the `left` and the rest on `right`.
-        let rec buildApplicationAST left right cont =
-            match right with
-            | WithContinuation (operand, rest) ->
-                buildOperandAST
-                    operand
-                    (fun right ->
+            /// Build AST of lambda term application using term on the `left` and the rest on `right`.
+            let rec buildApplicationAST left right =
+                continuation {
+                    match right with
+                    | WithContinuation (operand, rest) ->
+                        let! right = buildOperandAST operand
                         let partial = irApp left right
-                        buildApplicationAST partial rest cont
-                    )
-            | ClosingAbstraction abs -> buildTermAST' abs (fun right -> irApp left right |> cont)
-            | Epsilon -> cont left
+                        return! buildApplicationAST partial rest
+                    | ClosingAbstraction abs ->
+                        let! right = buildTermAST' abs
+                        return irApp left right
+                    | Epsilon -> return left
+                }
 
-        match primary with
-        | ParseTree.Application (operand, rest) ->
-            buildOperandAST operand (fun operandAST -> buildApplicationAST operandAST rest cont)
-        | ParseTree.Abstraction (Names (head :: tail), body) ->
-            if tail.IsEmpty then
-                buildTermAST' body (fun bodyAST -> irAbs head bodyAST |> cont)
-            else
-                buildTermAST' (ParseTree.Abstraction (Names tail, body)) (fun absAST -> irAbs head absAST |> cont)
-        | ParseTree.Abstraction (Names [], _) -> raise <| ArgumentException "Abstraction received empty variable list."
+            continuation {
+                match primary with
+                | ParseTree.Application (operand, rest) ->
+                    let! operandAST = buildOperandAST operand
+                    return! buildApplicationAST operandAST rest
+                | ParseTree.Abstraction (Names (head :: []), body) ->
+                    let! bodyAST = buildTermAST' body
+                    return irAbs head bodyAST
+                | ParseTree.Abstraction (Names (head :: tail), body) ->
+                    let rest = ParseTree.Abstraction (Names tail, body)
+                    let! restAST = buildTermAST' rest
+                    return irAbs head restAST
+                | ParseTree.Abstraction (Names [], _) ->
+                    return raise <| ArgumentException "Abstraction received empty variable list."
+            } in
 
-    /// Build AST of a lambda term using the `primary` representation.
-    let buildTermAST primary = buildTermAST' primary id
+        buildTermAST' primary id
 
     /// Build a finalized expression representation from the `primary` one.
     let buildExpressionAST primary =

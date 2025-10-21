@@ -200,7 +200,7 @@ module LambdaInterpreterTests =
         && Seq.zip actual expected
            |> Seq.map (
                function
-               | Output (Line actualLine, Success (actualRes, _)), (Line expectedLine, Some expectedRes) ->
+               | Output (Line actualLine, Success (actualRes, _, _)), (Line expectedLine, Some expectedRes) ->
                    actualLine = expectedLine && lamToString false false actualRes = expectedRes
                | Output (Line actualLine, Failure _), (Line expectedLine, None) -> actualLine = expectedLine
                | _ -> false

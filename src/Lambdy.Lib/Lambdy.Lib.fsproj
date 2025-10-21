@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Continuation.fs" />
     <Compile Include="Literals.fs" />
     <Compile Include="ParseTree.fs" />
     <Compile Include="Parsers.fs" />
