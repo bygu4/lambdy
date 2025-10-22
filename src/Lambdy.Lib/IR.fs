@@ -24,14 +24,10 @@ module IR =
     // ============= Church numerals ======================================
 
     let churchNumeral n =
-        let rec churchNumeral' n =
-            continuation {
-                match n with
-                | 0us -> return irVar (Name "x")
-                | n ->
-                    let! rest = churchNumeral' (n - 1us)
-                    return irApp (irVar (Name "f")) rest
-            } in
+        let rec churchNumeral' n cont =
+            match n with
+            | 0us -> irVar (Name "x") |> cont
+            | n -> churchNumeral' (n - 1us) (fun rest -> irApp (irVar (Name "f")) rest |> cont) in
 
         churchNumeral' n (fun app -> irAbs (Name "f") (irAbs (Name "x") app))
 

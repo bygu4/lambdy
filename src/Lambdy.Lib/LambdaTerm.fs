@@ -95,7 +95,7 @@ module LambdaTerm =
         let rec alphaEquivNum' name1 name2 term acc =
             match term with
             | Variable var when var = name2 -> Some acc
-            | Application (left, right) when left = lamVar name1 -> alphaEquivNum' name1 name2 right (acc + 1)
+            | Application (Variable left, right) when left = name1 -> alphaEquivNum' name1 name2 right (acc + 1)
             | _ -> None in
 
         match term with

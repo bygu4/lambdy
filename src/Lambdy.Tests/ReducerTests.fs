@@ -1,7 +1,10 @@
 ﻿namespace Lambdy.Tests
 
+open System
+
 open NUnit.Framework
 open FsUnit
+open FsCheck.NUnit
 
 open Lambdy.Lib.Continuation
 open Lambdy.Lib.ParseTree
@@ -10,6 +13,7 @@ open Lambdy.Lib.LambdaTerm
 open Lambdy.Lib.Strategy
 open Lambdy.Lib.Interfaces.IReducer
 open Lambdy.Lib.Reducer
+open Lambdy.Tests.LambdaTermTests
 
 module ReducerTests =
 
@@ -208,6 +212,12 @@ module ReducerTests =
                     (Name "x")
                     (irAbsAlpha (Name "y") (Name "y'") (irApp (irVarTerm "x") (irVarBound (Name "Y") (irVarTerm "y")))))
                 (irVarTerm "y'")
+
+            // Church numerals
+            irNum 0us
+            irNum 142us
+            irNum UInt16.MaxValue
+            irApp (irApp (irNum 0us) (irNum 100us)) (irVar (Name "Q"))
         ]
 
     let expectedResults_Generic =
@@ -293,6 +303,12 @@ module ReducerTests =
             ShouldSucceed (lamI "y", 1)
             ShouldSucceed (lamApp (lamVarTerm "t") (lamVarTerm "y"), 2)
             ShouldSucceed (lamAbs (Name "y''") (lamApp (lamVarTerm "y'") (lamVarTerm "y")), 1)
+
+            // Church numerals
+            ShouldSucceed (churchNumeral 0us |> expand, 0)
+            ShouldSucceed (churchNumeral 142us |> expand, 0)
+            ShouldSucceed (churchNumeral UInt16.MaxValue |> expand, 0)
+            ShouldSucceed (lamVar (Name "Q"), 2)
         ]
 
     let testCases_Generic =
@@ -570,13 +586,13 @@ module ReducerTests =
         |> Seq.append testCases_Generic
 
     // ========================================================================
-    // ============= Test callback ============================================
+    // ============= Test callbacks ===========================================
     // ========================================================================
 
     [<TestCaseSource(nameof (testCases))>]
     let testReduce strategy etaConversions term expectedResult =
         let reducer =
-            new Reducer (strategy = strategy, etaConversions = etaConversions, reductionLimit = ReductionLimit)
+            Reducer (strategy = strategy, etaConversions = etaConversions, reductionLimit = ReductionLimit)
 
         let result = reducer.Reduce term
 
@@ -586,3 +602,65 @@ module ReducerTests =
             count |> should equal expectedCount
         | Failed _, ShouldFail -> ()
         | _ -> failwith "Results don't match!"
+
+    [<Property(Arbitrary = [| typeof<GenTerm> |])>]
+    let ``Small-step and big-step reduction produces equal results`` term strategy etaConversions =
+        let smallStepReducer =
+            Reducer (
+                stepByStep = true,
+                strategy = strategy,
+                etaConversions = etaConversions,
+                reductionLimit = ReductionLimit
+            )
+
+        let bigStepReducer =
+            Reducer (
+                stepByStep = false,
+                strategy = strategy,
+                etaConversions = etaConversions,
+                reductionLimit = ReductionLimit
+            )
+
+        let rec finish =
+            function
+            | Incomplete cont -> cont () |> finish
+            | _ as result -> result
+
+        let areEqual result1 result2 =
+            match result1, result2 with
+            | Done (normalForm1, reductionCount1), Done (normalForm2, reductionCount2) ->
+                normalForm1 = normalForm2 && reductionCount1 = reductionCount2
+            | Failed errorMessage1, Failed errorMessage2 -> errorMessage1 = errorMessage2
+            | _ -> false
+
+        let smallStepResult = term |> toIR |> smallStepReducer.Reduce |> finish
+        let bigStepResult = term |> toIR |> bigStepReducer.Reduce
+        smallStepResult |> areEqual bigStepResult
+
+    [<Property(Arbitrary = [| typeof<GenTerm> |])>]
+    let ``Number of steps is equal to number of beta-reductions`` term strategy etaConversions =
+        let reducer =
+            Reducer (
+                stepByStep = true,
+                strategy = strategy,
+                etaConversions = etaConversions,
+                reductionLimit = ReductionLimit
+            )
+
+        let mutable stepCount = 0
+
+        let rec finish =
+            function
+            | Incomplete cont ->
+                stepCount <- stepCount + 1
+                cont () |> finish
+            | _ as result -> result
+
+        term
+        |> toIR
+        |> reducer.Reduce
+        |> finish
+        |> function
+            | Done (_, reductionCount) -> stepCount = reductionCount
+            | Failed _ -> stepCount = ReductionLimit
+            | _ -> false
